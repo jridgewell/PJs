@@ -1,0 +1,19 @@
+{
+  "name": "promise.js",
+  "version": "0.0.1",
+  "description": "A Promises A/+ implementation",
+  "main": "promise.js",
+  "scripts": {
+    "test": "mocha --timeout 200"
+  },
+  "author": "Justin Ridgewell",
+  "license": "MIT",
+  "devDependencies": {
+    "promises-aplus-tests": "*",
+    "mocha": "*",
+    "grunt": "~0.4.2",
+    "grunt-mocha-test": "~0.8.1",
+    "grunt-contrib-jshint": "~0.8.0",
+    "grunt-contrib-uglify": "~0.2.7"
+  }
+}
