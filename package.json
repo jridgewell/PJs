@@ -10,7 +10,8 @@
   "license": "MIT",
   "devDependencies": {
     "promises-aplus-tests": "*",
-    "mocha": "*",
+    "mocha": "~1.17.0",
+    "chai": "~1.8.1",
     "grunt": "~0.4.2",
     "grunt-mocha-test": "~0.8.1",
     "grunt-contrib-jshint": "~0.8.0",
