@@ -12,6 +12,8 @@
     "promises-aplus-tests": "*",
     "mocha": "~1.17.0",
     "chai": "~1.8.1",
+    "mocha-as-promised": "~2.0.0",
+    "chai-as-promised": "~4.1.0",
     "grunt": "~0.4.2",
     "grunt-mocha-test": "~0.8.1",
     "grunt-contrib-jshint": "~0.8.0",
