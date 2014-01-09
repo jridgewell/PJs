@@ -102,9 +102,9 @@
 
         function Handler(fn) {
             if (!isFunction(fn)) { return promise; }
-            var doResolveDeferred = partial(doResolve, this);
+            var deferred = this;
             defer(function() {
-                doResolveDeferred(partial(fn, _value));
+                doResolve(deferred, partial(fn, _value));
             });
             return this.promise;
         }
