@@ -23,5 +23,8 @@
     "validthis": true,
     "white": false,
     "globals": {
+        "describe": true,
+        "it": true,
+        "expect": true
     }
 }
