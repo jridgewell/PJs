@@ -26,8 +26,8 @@
     function constant(x) {
         return partial(identity, x);
     }
-    var defer = process && isFunction(process.nextTick) ? process.nextTick
-        : setImmediate ? setImmediate
+    var defer = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
+        : typeof setImmediate !== 'undefined' ? setImmediate
         : function(fn) { setTimeout(fn, 0); };
 
     function doResolve(deferred, xFn) {
