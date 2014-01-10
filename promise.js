@@ -99,7 +99,7 @@
     }
 
 
-    function Promise(fn) {
+    function Promise(resolver) {
         var _value;
         var promise = this;
         this.then = function(onFulfilled, onRejected) {
@@ -137,7 +137,7 @@
         var resolve = setHandlerForPromise(fulfilledHandler);
         var reject = setHandlerForPromise(rejectedHandler);
 
-        fn(function(value) {
+        resolver(function(value) {
             resolve(value);
         }, function(reason) {
             reject(reason);
