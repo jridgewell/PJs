@@ -13,7 +13,7 @@
         return typeof fn === 'function';
     }
     function isObject(obj) {
-        return typeof obj === 'object' || isFunction(obj);
+        return obj && (typeof obj === 'object' || isFunction(obj));
     }
     function assumeFunction(fn, backup) {
         return (isFunction(fn)) ? fn : backup;
