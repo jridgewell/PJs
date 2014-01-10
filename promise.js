@@ -137,9 +137,18 @@
                 handler = newHandler;
             };
         }
-
-        var resolve = setHandlerForPromise(fulfilledHandler);
         var reject = setHandlerForPromise(rejectedHandler);
+        var resolve = (function(_resolve, _reject) {
+            var deferred = {
+                promise: promise,
+                resolve: _resolve,
+                reject: _reject
+            };
+            return function(value) {
+                resolve = reject = noop;
+                doResolve(deferred, constant(value));
+            };
+        })(setHandlerForPromise(fulfilledHandler), reject);
 
         resolver(function(value) {
             resolve(value);
