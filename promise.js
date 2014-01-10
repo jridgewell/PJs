@@ -194,6 +194,16 @@
         return deferred;
     };
 
+    Promise.cast = function(obj) {
+        if (obj && isObject(obj) && obj.constructor === this) {
+            return obj;
+        }
+
+        return new this(function(resolve) {
+            resolve(obj);
+        });
+    };
+
     if (typeof exports !== 'undefined') {
         if (typeof module !== 'undefined' && module.exports) {
             exports = module.exports = Promise;
