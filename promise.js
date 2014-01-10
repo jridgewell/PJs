@@ -60,7 +60,7 @@
         try {
             var x = xFn();
             if (x === deferred.promise) {
-                return rejectPromise(new TypeError('A promise cannot be resolved with itself.'));
+                return rejectPromise(new TypeError('A promise cannot be fulfilled with itself.'));
             }
             if (x && isObject(x) && (then = x.then) && isFunction(then)) {
                 then.call(
@@ -109,7 +109,7 @@
 
         var handler = PendingHandler([]);
 
-        function resolvedHandler(onFulfilled) {
+        function fulfilledHandler(onFulfilled) {
             return Handler.call(this, onFulfilled);
         }
         function rejectedHandler(_, onRejected) {
@@ -134,7 +134,7 @@
             };
         }
 
-        var resolve = setHandlerForPromise(resolvedHandler);
+        var resolve = setHandlerForPromise(fulfilledHandler);
         var reject = setHandlerForPromise(rejectedHandler);
 
         fn(function(value) {
