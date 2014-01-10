@@ -1,5 +1,121 @@
 'use strict';
 (function(root) {
+    /****************************
+     Public Constructor
+     ****************************/
+
+    function Promise(resolver) {
+        var _value;
+        var promise = this;
+        this.then = function(onFulfilled, onRejected) {
+            var deferred = Promise.deferred();
+            return handler.call(deferred, onFulfilled, onRejected);
+        };
+
+        var handler = PendingHandler([]);
+
+        function fulfilledHandler(onFulfilled) {
+            return Handler.call(this, onFulfilled);
+        }
+        function rejectedHandler(_, onRejected) {
+            return Handler.call(this, onRejected);
+        }
+
+        function Handler(fn) {
+            if (!isFunction(fn)) { return promise; }
+            var deferred = this;
+            defer(function() {
+                doResolve(deferred, partial(fn, _value));
+            });
+            return this.promise;
+        }
+
+        function setHandlerForPromise(newHandler) {
+            return function(value) {
+                _value = value;
+                resolve = reject = noop;
+                handler.handle(newHandler);
+                handler = newHandler;
+            };
+        }
+        var reject = setHandlerForPromise(rejectedHandler);
+        var resolve = (function(_resolve, _reject) {
+            var deferred = {
+                promise: promise,
+                resolve: _resolve,
+                reject: _reject
+            };
+            return function(value) {
+                resolve = reject = noop;
+                doResolve(deferred, constant(value));
+            };
+        })(setHandlerForPromise(fulfilledHandler), reject);
+
+        resolver(function(value) {
+            resolve(value);
+        }, function(reason) {
+            reject(reason);
+        });
+
+        return promise;
+    }
+
+    /****************************
+     Public Instance Methods
+     ****************************/
+
+    Promise.prototype.catch = function(onRejected) {
+        return this.then(void 0, onRejected);
+    };
+
+    Promise.prototype.throw = function(error) {
+        return this.catch(function(err) {
+            // Defer it, so our promise doesn't catch
+            // it and turn it into a rejected promise.
+            defer(function() {
+                throw error || err || new Error('Uncaught promise rejection.');
+            });
+        });
+    };
+
+    /****************************
+     Public Static Methods
+     ****************************/
+
+    Promise.resolve = function(value) {
+        return new Promise(function(resolve) {
+            resolve(value);
+        });
+    };
+
+    Promise.reject = function(reason) {
+        return new Promise(function(_, reject) {
+            reject(reason);
+        });
+    };
+
+    Promise.deferred = function() {
+        var deferred = {};
+        deferred.promise = new Promise(function(resolve, reject) {
+            deferred.resolve = resolve;
+            deferred.reject = reject;
+        });
+        return deferred;
+    };
+
+    Promise.cast = function(obj) {
+        if (obj && isObject(obj) && obj.constructor === this) {
+            return obj;
+        }
+
+        return new this(function(resolve) {
+            resolve(obj);
+        });
+    };
+
+    /****************************
+     Private functions
+     ****************************/
     function noop() {}
     function identity(x) { return x; }
     function rejectIdentity(x) {
@@ -101,108 +217,6 @@
             handler.call(tuple[0], tuple[1], tuple[2]);
         }
     }
-
-
-    function Promise(resolver) {
-        var _value;
-        var promise = this;
-        this.then = function(onFulfilled, onRejected) {
-            var deferred = Promise.deferred();
-            return handler.call(deferred, onFulfilled, onRejected);
-        };
-
-        var handler = PendingHandler([]);
-
-        function fulfilledHandler(onFulfilled) {
-            return Handler.call(this, onFulfilled);
-        }
-        function rejectedHandler(_, onRejected) {
-            return Handler.call(this, onRejected);
-        }
-
-        function Handler(fn) {
-            if (!isFunction(fn)) { return promise; }
-            var deferred = this;
-            defer(function() {
-                doResolve(deferred, partial(fn, _value));
-            });
-            return this.promise;
-        }
-
-        function setHandlerForPromise(newHandler) {
-            return function(value) {
-                _value = value;
-                resolve = reject = noop;
-                handler.handle(newHandler);
-                handler = newHandler;
-            };
-        }
-        var reject = setHandlerForPromise(rejectedHandler);
-        var resolve = (function(_resolve, _reject) {
-            var deferred = {
-                promise: promise,
-                resolve: _resolve,
-                reject: _reject
-            };
-            return function(value) {
-                resolve = reject = noop;
-                doResolve(deferred, constant(value));
-            };
-        })(setHandlerForPromise(fulfilledHandler), reject);
-
-        resolver(function(value) {
-            resolve(value);
-        }, function(reason) {
-            reject(reason);
-        });
-
-        return promise;
-    }
-
-    Promise.prototype.catch = function(onRejected) {
-        return this.then(void 0, onRejected);
-    };
-
-    Promise.prototype.throw = function(error) {
-        return this.catch(function(err) {
-            // Defer it, so our promise doesn't catch
-            // it and turn it into a rejected promise.
-            defer(function() {
-                throw error || err || new Error('Uncaught promise rejection.');
-            });
-        });
-    };
-
-    Promise.resolve = function(value) {
-        return new Promise(function(resolve) {
-            resolve(value);
-        });
-    };
-
-    Promise.reject = function(reason) {
-        return new Promise(function(_, reject) {
-            reject(reason);
-        });
-    };
-
-    Promise.deferred = function() {
-        var deferred = {};
-        deferred.promise = new Promise(function(resolve, reject) {
-            deferred.resolve = resolve;
-            deferred.reject = reject;
-        });
-        return deferred;
-    };
-
-    Promise.cast = function(obj) {
-        if (obj && isObject(obj) && obj.constructor === this) {
-            return obj;
-        }
-
-        return new this(function(resolve) {
-            resolve(obj);
-        });
-    };
 
     if (typeof exports !== 'undefined') {
         if (typeof module !== 'undefined' && module.exports) {
