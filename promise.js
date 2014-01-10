@@ -81,28 +81,32 @@
         }
     }
 
+    function Promise() {
+    }
+    Promise.prototype = {
+        constructor: Promise,
+
+        catch: function(onRejected) {
+            return this.then(void 0, onRejected);
+        },
+
+        throw: function(error) {
+            return this.then(void 0, function(err) {
+                // Defer it, so our promise doesn't catch
+                // it and turn it into a rejected promise.
+                defer(function() {
+                    throw error || err || new Error('Uncaught promise rejection.');
+                });
+            });
+        }
+    };
+
     function PJs(fn) {
         var _value;
-        var promise = {
-            // Changes the value of the returned promise
-            then: function(onFulfilled, onRejected) {
-                var deferred = PJs.deferred();
-                return handler.call(deferred, onFulfilled, onRejected);
-            },
-
-            'throw': function() {
-            catch: function(onRejected) {
-                return promise.then(void 0, onRejected);
-            },
-
-                return promise.then(void 0, function(err) {
-                    // Defer it, so our promise doesn't catch
-                    // it and turn it into a rejected promise.
-                    defer(function() {
-                        throw err;
-                    });
-                });
-            }
+        var promise = new Promise();
+        promise.then = function(onFulfilled, onRejected) {
+            var deferred = PJs.deferred();
+            return handler.call(deferred, onFulfilled, onRejected);
         };
 
         var handler = PendingHandler([]);
