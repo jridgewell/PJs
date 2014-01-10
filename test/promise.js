@@ -9,6 +9,13 @@ chai.use(require('sinon-chai'));
 require('mocha-as-promised')();
 
 describe('PJs', function() {
+
+    describe('constructor', function() {
+        it('returns an instance of the Promise class', function() {
+            expect(new Promise(function() {})).to.be.instanceOf(Promise);
+        });
+    });
+
     describe('#throw', function() {
         xit('figure out how to test this...');
     });

@@ -7,6 +7,7 @@
     function Promise(resolver) {
         var _value;
         var promise = this;
+
         this.then = function(onFulfilled, onRejected) {
             var deferred = Promise.deferred();
             return handler.call(deferred, onFulfilled, onRejected);
@@ -56,8 +57,6 @@
         }, function(reason) {
             reject(reason);
         });
-
-        return promise;
     }
 
     /****************************
