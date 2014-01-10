@@ -98,31 +98,12 @@
         }
     }
 
-    function Promise() {
-    }
-    Promise.prototype = {
-        constructor: Promise,
 
-        catch: function(onRejected) {
-            return this.then(void 0, onRejected);
-        },
-
-        throw: function(error) {
-            return this.catch(function(err) {
-                // Defer it, so our promise doesn't catch
-                // it and turn it into a rejected promise.
-                defer(function() {
-                    throw error || err || new Error('Uncaught promise rejection.');
-                });
-            });
-        }
-    };
-
-    function PJs(fn) {
+    function Promise(fn) {
         var _value;
-        var promise = new Promise();
-        promise.then = function(onFulfilled, onRejected) {
-            var deferred = PJs.deferred();
+        var promise = this;
+        this.then = function(onFulfilled, onRejected) {
+            var deferred = Promise.deferred();
             return handler.call(deferred, onFulfilled, onRejected);
         };
 
@@ -165,21 +146,35 @@
         return promise;
     }
 
-    PJs.resolved = function(value) {
-        return PJs(function(resolve) {
+    Promise.prototype.catch = function(onRejected) {
+        return this.then(void 0, onRejected);
+    };
+
+    Promise.prototype.throw = function(error) {
+        return this.catch(function(err) {
+            // Defer it, so our promise doesn't catch
+            // it and turn it into a rejected promise.
+            defer(function() {
+                throw error || err || new Error('Uncaught promise rejection.');
+            });
+        });
+    };
+
+    Promise.resolved = function(value) {
+        return new Promise(function(resolve) {
             resolve(value);
         });
     };
 
-    PJs.rejected = function(reason) {
-        return PJs(function(_, reject) {
+    Promise.rejected = function(reason) {
+        return new Promise(function(_, reject) {
             reject(reason);
         });
     };
 
-    PJs.deferred = function() {
+    Promise.deferred = function() {
         var deferred = {};
-        deferred.promise = PJs(function(resolve, reject) {
+        deferred.promise = new Promise(function(resolve, reject) {
             deferred.resolve = resolve;
             deferred.reject = reject;
         });
@@ -188,13 +183,10 @@
 
     if (typeof exports !== 'undefined') {
         if (typeof module !== 'undefined' && module.exports) {
-            exports = module.exports = PJs;
             exports = module.exports = Promise;
         }
-        exports.PJs = PJs;
         exports.Promise = Promise;
     } else {
-        root.PJs = PJs;
         root.Promise = Promise;
     }
 })(this);
