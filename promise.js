@@ -26,6 +26,10 @@
     function constant(x) {
         return partial(identity, x);
     }
+    function getThen(obj) {
+        var then;
+        return (isObject(obj) && (then = obj.then) && isFunction(then) && then);
+    }
     var defer = (function(queue) {
         function flush() {
             // Do **NOT** cache queue.length. It can change at any time.
@@ -62,7 +66,7 @@
             if (x === deferred.promise) {
                 return rejectPromise(new TypeError('A promise cannot be fulfilled with itself.'));
             }
-            if (x && isObject(x) && (then = x.then) && isFunction(then)) {
+            if ((then = getThen(x))) {
                 then.call(
                     x,
                     function(y) { resolvePromise(y); },
