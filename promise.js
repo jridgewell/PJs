@@ -91,6 +91,10 @@
             },
 
             'throw': function() {
+            catch: function(onRejected) {
+                return promise.then(void 0, onRejected);
+            },
+
                 return promise.then(void 0, function(err) {
                     // Defer it, so our promise doesn't catch
                     // it and turn it into a rejected promise.
