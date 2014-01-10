@@ -91,7 +91,7 @@
         },
 
         throw: function(error) {
-            return this.then(void 0, function(err) {
+            return this.catch(function(err) {
                 // Defer it, so our promise doesn't catch
                 // it and turn it into a rejected promise.
                 defer(function() {
