@@ -26,9 +26,26 @@
     function constant(x) {
         return partial(identity, x);
     }
-    var defer = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
+    var defer = (function(queue) {
+        function flush() {
+            // Do **NOT** cache queue.length. It can change at any time.
+            // We want it to change at any time.
+            for (var i = 0; i < queue.length; i++) {
+                queue[i]();
+            }
+            queue = [];
+        }
+        return function(fn) {
+            var l = queue.push(fn);
+
+            if (l === 1) {
+                nextTick(flush);
+            }
+        };
+    })([]);
+    var nextTick = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
         : typeof setImmediate !== 'undefined' ? setImmediate
-        : function(fn) { setTimeout(fn, 0); };
+        : function(fn) { setTimeout(fn, 1); };
 
     function doResolve(deferred, xFn) {
         var then;
@@ -172,9 +189,12 @@
     if (typeof exports !== 'undefined') {
         if (typeof module !== 'undefined' && module.exports) {
             exports = module.exports = PJs;
+            exports = module.exports = Promise;
         }
         exports.PJs = PJs;
+        exports.Promise = Promise;
     } else {
         root.PJs = PJs;
+        root.Promise = Promise;
     }
 })(this);
