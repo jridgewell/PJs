@@ -1,6 +1,6 @@
 var Promise = require('../');
 module.exports = {
-    resolved: Promise.resolved,
-    rejected: Promise.rejected,
+    resolved: Promise.resolve,
+    rejected: Promise.reject,
     deferred: Promise.deferred
 };

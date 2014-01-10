@@ -15,7 +15,7 @@ describe('PJs', function() {
 
     describe('#catch', function() {
         describe('when promise is resolved', function() {
-            var p = Promise.resolved();
+            var p = Promise.resolve();
             it('is not called', function() {
                 var spy = sinon.spy();
                 return p.catch(spy).then(function() {
@@ -25,7 +25,7 @@ describe('PJs', function() {
         });
 
         describe('when promise is rejected', function() {
-            var p = Promise.rejected();
+            var p = Promise.reject();
             it('is called', function() {
                 var spy = sinon.spy();
                 return p.catch(spy).then(function() {
@@ -46,7 +46,7 @@ describe('PJs', function() {
             it('return can reject promise', function() {
                 var test = {};
                 function returnTest() {
-                    return Promise.rejected(test);
+                    return Promise.reject(test);
                 }
                 return p.catch(returnTest).then(null, function(value) {
                     expect(value).to.equal(test);

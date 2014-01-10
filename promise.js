@@ -160,13 +160,13 @@
         });
     };
 
-    Promise.resolved = function(value) {
+    Promise.resolve = function(value) {
         return new Promise(function(resolve) {
             resolve(value);
         });
     };
 
-    Promise.rejected = function(reason) {
+    Promise.reject = function(reason) {
         return new Promise(function(_, reject) {
             reject(reason);
         });
