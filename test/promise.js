@@ -33,12 +33,32 @@ describe('PJs', function() {
                 });
             });
 
-            it('return is used to fulfill/reject promise', function() {
+            it('return can fulfill promise', function() {
                 var test = {};
                 function returnTest() {
                     return test;
                 }
                 return p.catch(returnTest).then(function(value) {
+                    expect(value).to.equal(test);
+                });
+            });
+
+            it('return can reject promise', function() {
+                var test = {};
+                function returnTest() {
+                    return Promise.rejected(test);
+                }
+                return p.catch(returnTest).then(null, function(value) {
+                    expect(value).to.equal(test);
+                });
+            });
+
+            it('can throw to reject promise', function() {
+                var test = new Error();
+                function returnTest() {
+                    throw test;
+                }
+                return p.catch(returnTest).then(null, function(value) {
                     expect(value).to.equal(test);
                 });
             });
