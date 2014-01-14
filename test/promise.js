@@ -17,7 +17,7 @@ describe('PJs', function() {
 
         describe('resolve', function() {
             describe('when passed a thenable', function() {
-                it('becomes resolved if thenable is resolved', function() {
+                it('becomes fulfilled if thenable is fulfilled', function() {
                     return Promise.resolve(Promise.resolve(1)).then(function(value) {
                         expect(value).to.equal(1);
                     });
@@ -33,7 +33,7 @@ describe('PJs', function() {
 
         describe('reject', function() {
             describe('when passed a thenable', function() {
-                it("rejects with thenable object if thenable is resolved", function() {
+                it("rejects with thenable object even if thenable is fulfilled", function() {
                     var resolved = Promise.resolve(1);
                     return Promise.reject(resolved).catch(function(value) {
                         expect(value).to.equal(resolved);
@@ -73,26 +73,26 @@ describe('PJs', function() {
     });
 
     describe('.resolve', function() {
-        function resolvesWith(resolution, description) {
-            it('resolves with a ' + description, function() {
+        function fulfillsWith(resolution, description) {
+            it('fulfills with a ' + description, function() {
                 return Promise.resolve(resolution).then(function(value) {
                     expect(value).to.equal(resolution);
                 });
             });
         }
 
-        resolvesWith({}, 'object');
-        resolvesWith(1, 'number');
-        resolvesWith(0, 'zero');
-        resolvesWith(true, 'true');
-        resolvesWith(false, 'false');
-        resolvesWith(undefined, 'undefined');
-        resolvesWith(null, 'null');
-        resolvesWith(new Error(), 'error');
-        resolvesWith('', 'blank string');
+        fulfillsWith({}, 'object');
+        fulfillsWith(1, 'number');
+        fulfillsWith(0, 'zero');
+        fulfillsWith(true, 'true');
+        fulfillsWith(false, 'false');
+        fulfillsWith(undefined, 'undefined');
+        fulfillsWith(null, 'null');
+        fulfillsWith(new Error(), 'error');
+        fulfillsWith('', 'blank string');
 
         describe('when passed a thenable', function() {
-            it('becomes resolved if thenable is resolved', function() {
+            it('becomes fulfilled if thenable is fulfilled', function() {
                 return Promise.resolve(Promise.resolve(1)).then(function(value) {
                     expect(value).to.equal(1);
                 });
@@ -126,7 +126,7 @@ describe('PJs', function() {
         rejectsWith('', 'blank string');
 
         describe('when passed a thenable', function() {
-            it("rejects with thenable object if thenable is resolved", function() {
+            it("rejects with thenable object even if thenable is fulfilled", function() {
                 var resolved = Promise.resolve(1);
                 return Promise.reject(resolved).catch(function(value) {
                     expect(value).to.equal(resolved);
@@ -166,8 +166,8 @@ describe('PJs', function() {
         });
 
         describe('when not instanceof Promise', function() {
-            function resolvesWith(resolution, description) {
-                it('resolves new promise with ' + description, function() {
+            function fulfillsWith(resolution, description) {
+                it('fulfills new promise with ' + description, function() {
                     var p = Promise.cast(resolution).then(function(value) {
                         expect(p).not.to.equal(resolution);
                         expect(value).to.equal(resolution);
@@ -176,18 +176,18 @@ describe('PJs', function() {
                 });
             }
 
-            resolvesWith({}, 'object');
-            resolvesWith(1, 'number');
-            resolvesWith(0, 'zero');
-            resolvesWith(true, 'true');
-            resolvesWith(false, 'false');
-            resolvesWith(undefined, 'undefined');
-            resolvesWith(null, 'null');
-            resolvesWith(new Error(), 'error');
-            resolvesWith('', 'blank string');
+            fulfillsWith({}, 'object');
+            fulfillsWith(1, 'number');
+            fulfillsWith(0, 'zero');
+            fulfillsWith(true, 'true');
+            fulfillsWith(false, 'false');
+            fulfillsWith(undefined, 'undefined');
+            fulfillsWith(null, 'null');
+            fulfillsWith(new Error(), 'error');
+            fulfillsWith('', 'blank string');
 
             describe('when passed a thenable', function() {
-                it('becomes resolved if thenable is resolved', function() {
+                it('becomes fulfilled if thenable is fulfilled', function() {
                     return Promise.resolve(Promise.resolve(1)).then(function(value) {
                         expect(value).to.equal(1);
                     });
@@ -203,10 +203,184 @@ describe('PJs', function() {
     });
 
     describe('.all', function() {
-        it('test');
+        it('fulfills with empty array if empty array passed', function() {
+            return Promise.all([]).then(function(array) {
+                expect(array).to.be.instanceOf(Array);
+                expect(array).to.be.empty;
+            });
+        });
+
+        describe('when passed promises', function() {
+            it('fulfills with array of correct size', function() {
+                return Promise.all([Promise.resolve(1), Promise.resolve(2)]).then(function(array) {
+                    expect(array.length).to.equal(2);
+                });
+            });
+
+            it('fulfills with array of fulfilled values', function() {
+                return Promise.all([Promise.resolve(1), Promise.resolve(2)]).then(function(array) {
+                    expect(array).to.include.members([1, 2]);
+                });
+            });
+
+            it('rejects if promise rejects', function() {
+                return Promise.all([Promise.resolve(1), Promise.reject(2)]).catch(function(reason) {
+                    expect(reason).to.equal(2);
+                });
+            });
+        });
+
+        describe('when passed a value', function() {
+            it('fulfills with array of correct size', function() {
+                return Promise.all([1, 2]).then(function(array) {
+                    expect(array.length).to.equal(2);
+                });
+            });
+
+            it('fulfills with array of fulfilled values', function() {
+                return Promise.all([1, 2]).then(function(array) {
+                    expect(array).to.include.members([1, 2]);
+                });
+            });
+        });
+
+        describe('when passed a mixture of promises and values', function() {
+            it('fulfills with array of correct size', function() {
+                return Promise.all([1, Promise.resolve(2)]).then(function(array) {
+                    expect(array.length).to.equal(2);
+                });
+            });
+
+            it('fulfills with array of fulfilled values', function() {
+                return Promise.all([1, Promise.resolve(2)]).then(function(array) {
+                    expect(array).to.include.members([1, 2]);
+                });
+            });
+
+            it('rejects if promise rejects', function() {
+                return Promise.all([1, Promise.reject(2)]).catch(function(reason) {
+                    expect(reason).to.equal(2);
+                });
+            });
+        });
     });
     describe('.race', function() {
-        it('test');
+        it('returns unresolved promise if empty array passed', function(done) {
+            var calledCount = 0;
+            function incCallCount() { ++calledCount; }
+            Promise.race([]).then(incCallCount, incCallCount);
+
+            setTimeout(function() {
+                expect(calledCount).to.equal(0);
+                done();
+            }, 20);
+        });
+
+        describe('when passed promises', function() {
+            it('fulfills with first promise to fulfill', function() {
+                var p1 = new Promise(function(resolve) {
+                    setTimeout(function() { resolve(1); }, 100);
+                });
+                var p2 = Promise.resolve(2);
+                return Promise.race([p1, p2]).then(function(value) {
+                    expect(value).to.equal(2);
+                });
+            });
+
+            it('rejects with first promise to reject', function() {
+                var p1 = new Promise(function(_, reject) {
+                    setTimeout(function() { reject(1); }, 100);
+                });
+                var p2 = Promise.reject(2);
+                return Promise.race([p1, p2]).catch(function(value) {
+                    expect(value).to.equal(2);
+                });
+            });
+
+            it('either fulfills or rejects with value of first promise', function() {
+                var p1 = new Promise(function(_, reject) {
+                    setTimeout(function() { reject(1); }, 100);
+                });
+                return Promise.race([p1, Promise.resolve(2)]).then(function(value) {
+                    expect(value).to.equal(2);
+                });
+            });
+        });
+
+        describe('when passed a value', function() {
+            it('fulfills with first value', function() {
+                return Promise.race([1, 2]).then(function(value) {
+                    expect(value).to.equal(1);
+                });
+            });
+        });
+
+        describe('when passed a mixture of promises and values', function() {
+            describe('when value comes first', function() {
+                it('fulfills with value', function() {
+                    return Promise.race([1, Promise.resolve(2)]).then(function(value) {
+                        expect(value).to.equal(1);
+                    });
+                });
+
+                it('fulfills with value, even if promise rejects', function() {
+                    return Promise.race([1, Promise.reject(2)]).then(function(value) {
+                        expect(value).to.equal(1);
+                    });
+                });
+            });
+
+            describe('when value comes first', function() {
+                describe('when promise is already resolved', function() {
+                    it('fulfills with value of promise', function() {
+                        return Promise.race([Promise.resolve(1), 2]).then(function(value) {
+                            expect(value).to.equal(1);
+                        });
+                    });
+
+                    it('rejects with reason of promise', function() {
+                        return Promise.race([Promise.reject(1), 2]).catch(function(reason) {
+                            expect(reason).to.equal(1);
+                        });
+                    });
+                });
+
+                describe('when promise is not resolved', function() {
+                    it('fulfills with first value', function() {
+                        var p1 = Promise.resolve().then(function() { return 1; });
+                        return Promise.race([p1, 2]).then(function(value) {
+                            expect(value).to.equal(2);
+                        });
+                    });
+
+                    it('fulfills with first value, even when promise rejects', function() {
+                        var p1 = Promise.resolve().then(function() { throw 1; });
+                        return Promise.race([p1, 2]).then(function(value) {
+                            expect(value).to.equal(2);
+                        });
+                    });
+                });
+            });
+
+            it('rejects with first to reject', function() {
+                var p1 = new Promise(function(_, reject) {
+                    setTimeout(function() { reject(1); }, 100);
+                });
+                var p2 = Promise.reject(2);
+                return Promise.race([p1, p2]).catch(function(value) {
+                    expect(value).to.equal(2);
+                });
+            });
+
+            it('either resolves or rejects with value of first promise', function() {
+                var p1 = new Promise(function(_, reject) {
+                    setTimeout(function() { reject(1); }, 100);
+                });
+                return Promise.race([p1, Promise.resolve(2)]).then(function(value) {
+                    expect(value).to.equal(2);
+                });
+            });
+        });
     });
 
     describe('#throw', function() {
@@ -214,7 +388,7 @@ describe('PJs', function() {
     });
 
     describe('#catch', function() {
-        describe('when promise is resolved', function() {
+        describe('when promise is fulfilled', function() {
             var p = Promise.resolve();
             it('is not called', function() {
                 var spy = sinon.spy();
