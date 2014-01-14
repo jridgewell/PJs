@@ -5,33 +5,28 @@
      ****************************/
 
     function Promise(resolver) {
-        var _value;
-        var promise = this;
+        var promise = new PendingPromise();
+        var self = this;
 
         this.then = function(onFulfilled, onRejected) {
-            var deferred = Promise.deferred();
-            return intermediateHandler.call(promise, deferred, _value, onFulfilled, onRejected);
+            var deferred = createDeferred(this.constructor);
+            return promise.then(self, deferred, onFulfilled, onRejected);
         };
-
-        var intermediateHandler = new PendingHandler();
-
-        function setNewHandler(newHandler) {
-            intermediateHandler.handle(newHandler, _value);
-            intermediateHandler = newHandler;
-        }
 
         var reject = function(reason) {
             resolve = reject = noop;
-            _value = reason;
-            setNewHandler(rejectedHandler);
+            var p = new RejectedPromise(reason);
+            promise.resolve(p);
+            promise = p;
         };
         var resolve = function(value) {
             var deferred = {
-                promise: promise,
+                promise: self,
                 reject: reject,
                 resolve: function(value) {
-                    _value = value;
-                    setNewHandler(fulfilledHandler);
+                    var p = new FulfilledPromise(value);
+                    promise.resolve(p);
+                    promise = p;
                 }
             };
             resolve = reject = noop;
@@ -82,16 +77,11 @@
     };
 
     Promise.deferred = function() {
-        var deferred = {};
-        deferred.promise = new this(function(resolve, reject) {
-            deferred.resolve = resolve;
-            deferred.reject = reject;
-        });
-        return deferred;
+        return createDeferred(this);
     };
 
     Promise.cast = function(obj) {
-        if (obj && isObject(obj) && obj.constructor === this) {
+        if (isObject(obj) && obj.constructor === this) {
             return obj;
         }
 
@@ -132,6 +122,60 @@
     /****************************
       Private functions
      ****************************/
+
+    function FulfilledPromise(value) {
+        this.value = value;
+    }
+    FulfilledPromise.prototype.then = function(promise, deferred, onFulfilled) {
+        if (!isFunction(onFulfilled)) { return promise; }
+        onFulfilled = partial(onFulfilled, this.value);
+        defer(function() {
+            doResolve(deferred, onFulfilled);
+        });
+        return deferred.promise;
+        // return new promise.constructor(function(resolve) {
+            // // defer(function() {
+            // resolve(onFulfilled());
+            // // });
+        // });
+    };
+
+    function RejectedPromise(reason) {
+        this.reason = reason;
+    }
+    RejectedPromise.prototype.then = function(promise, deferred, _, onRejected) {
+        if (!isFunction(onRejected)) { return promise; }
+        onRejected = partial(onRejected, this.reason);
+        defer(function() {
+            doResolve(deferred, onRejected);
+        });
+        // defer(partial(onRejected, this.reason));
+        return deferred.promise;
+        // return new promise.constructor(function(resolve) {
+            // resolve(onRejected());
+        // });
+    };
+
+    function PendingPromise() {
+        this.queue = [];
+    }
+    PendingPromise.prototype.then = function(promise, deferred, onFulfilled, onRejected) {
+        this.queue.push([
+            deferred,
+            assumeFunction(onFulfilled, identity),
+            assumeFunction(onRejected, rejectIdentity)
+        ]);
+        return deferred.promise;
+    };
+    PendingPromise.prototype.resolve = function(promise) {
+        var queue = this.queue, tuple;
+        for (var i = 0, l = queue.length; i < l; i++) {
+            tuple = queue[i];
+            promise.then(void 0, tuple[0], tuple[1], tuple[2]);
+        }
+    };
+
+
     function noop() {}
     function identity(x) { return x; }
     function rejectIdentity(x) { throw x; }
@@ -146,7 +190,7 @@
     }
     function partial(fn, arg1) {
         return function(arg2) {
-            return fn.call(void 0, arg1, arg2);
+            return fn.call(this, arg1, arg2);
         };
     }
     function constant(x) {
@@ -164,6 +208,14 @@
             array[index] = value;
             fn();
         };
+    }
+    function createDeferred(Promise) {
+        var deferred = {};
+        deferred.promise = new Promise(function(resolve, reject) {
+            deferred.resolve = resolve;
+            deferred.reject = reject;
+        });
+        return deferred;
     }
 
     var defer = (function(queue) {
@@ -186,6 +238,29 @@
         : typeof setImmediate !== 'undefined' ? setImmediate
         : function(fn) { setTimeout(fn, 1); };
 
+    /*
+    function doResolve(self, xFn) {
+        var then;
+        try {
+            var x = xFn();
+            if (x === self) {
+                throw new TypeError('A promise cannot be fulfilled with itself.');
+            }
+            if (isObject(x) && (then = x.then) && isFunction(then)) {
+                if (x.constructor === self.constructor) {
+                    return x;
+                }
+                return new self.constructor(function(resolve, reject) {
+                    then.call(x, resolve, reject);
+                });
+            } else {
+                return new FulfilledPromise(x);
+            }
+        } catch (e) {
+            return new RejectedPromise(e);
+        }
+    }
+    /*/
     function doResolve(deferred, xFn) {
         var then;
         var resolvePromise = function(y) {
@@ -214,43 +289,7 @@
             rejectPromise(e);
         }
     }
-
-    function PendingHandler() {
-        var queue = [];
-        function pendingHandler(deferred, _, onFulfilled, onRejected) {
-            queue.push([
-                deferred,
-                assumeFunction(onFulfilled, identity),
-                assumeFunction(onRejected, rejectIdentity)
-            ]);
-            return deferred.promise;
-        }
-        pendingHandler.handle = queueHandle(queue);
-        return pendingHandler;
-    }
-    function queueHandle(queue) {
-        return function(handler, value) {
-            var tuple;
-            for (var i = 0, l = queue.length; i < l; i++) {
-                tuple = queue[i];
-                handler(tuple[0], value, tuple[1], tuple[2]);
-            }
-        };
-    }
-    function fulfilledHandler(deferred, value, onFulfilled) {
-        if (!isFunction(onFulfilled)) { return this; }
-        defer(function() {
-            doResolve(deferred, partial(onFulfilled, value));
-        });
-        return deferred.promise;
-    }
-    function rejectedHandler(deferred, value, _, onRejected) {
-        if (!isFunction(onRejected)) { return this; }
-        defer(function() {
-            doResolve(deferred, partial(onRejected, value));
-        });
-        return deferred.promise;
-    }
+    //*/
 
     if (typeof exports !== 'undefined') {
         if (typeof module !== 'undefined' && module.exports) {
