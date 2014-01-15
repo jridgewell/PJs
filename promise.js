@@ -9,9 +9,8 @@
         var self = this;
 
         this.then = function then(onFulfilled, onRejected) {
-            var deferred = createDeferred(this.constructor);
-            promise.resolve(deferred, onFulfilled, onRejected);
-            return deferred.promise;
+            var deferred = createDeferred(self.constructor);
+            return promise.resolve(deferred, onFulfilled, onRejected) || self;
         };
 
         var _reject = function reject(reason) {
@@ -53,9 +52,7 @@
         return this.catch(function(error) {
             // Defer it, so our promise doesn't catch
             // it and turn it into a rejected promise.
-            defer(function() {
-                throw error;
-            });
+            defer(partial(rejectIdentity, error));
 
             throw error;
         });
@@ -128,27 +125,34 @@
         this.value = value;
     }
     FulfilledPromise.prototype.resolve = function(deferred, onFulfilled) {
-        if (!isFunction(onFulfilled)) { onFulfilled = identity; }
+        if (!isFunction(onFulfilled)) { return; }
         onFulfilled = partial(onFulfilled, this.value);
 
         defer(function() { doResolve(deferred, onFulfilled); });
+        return deferred.promise;
     };
 
     function RejectedPromise(reason) {
         this.reason = reason;
     }
     RejectedPromise.prototype.resolve = function(deferred, _, onRejected) {
-        if (!isFunction(onRejected)) { onRejected = rejectIdentity; }
+        if (!isFunction(onRejected)) { return; }
         onRejected = partial(onRejected, this.reason);
 
         defer(function() { doResolve(deferred, onRejected); });
+        return deferred.promise;
     };
 
     function PendingPromise() {
         this.queue = [];
     }
     PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
-        this.queue.push([ deferred, onFulfilled, onRejected ]);
+        this.queue.push([
+            deferred,
+            isFunction(onFulfilled) ? onFulfilled : identity,
+            isFunction(onRejected) ? onRejected : rejectIdentity
+        ]);
+        return deferred.promise;
     };
     PendingPromise.prototype.resolveQueued = function(promise) {
         var queue = this.queue, tuple;
@@ -168,15 +172,13 @@
     function isObject(obj) {
         return obj && (typeof obj === 'object' || typeof obj === 'function');
     }
-    function partial(fn, arg1) {
-        return function(arg2) {
-            return fn.call(this, arg1, arg2);
+    function partial(fn, arg) {
+        return function() {
+            return fn.call(this, arg);
         };
     }
     function constant(x) {
-        return function() {
-            return x;
-        };
+        return function() { return x; };
     }
     function after(times, fn) {
         return function() {
@@ -220,33 +222,33 @@
     })();
 
     function doResolve(deferred, xFn) {
-        var rejectPromise = deferred.reject;
+        var _reject = deferred.reject;
+        var _resolve;
         var then;
-        var resolvePromise;
         try {
             var x = xFn();
             if (x === deferred.promise) {
                 throw new TypeError('A promise cannot be fulfilled with itself.');
             }
             if (isObject(x) && (then = x.then) && isFunction(then)) {
-                resolvePromise = function(y) {
-                    resolvePromise = rejectPromise = noop;
+                _resolve = function resolvePromise(y) {
+                    _resolve = _reject = noop;
                     doResolve(deferred, constant(y));
                 };
-                rejectPromise = function(reason) {
-                    resolvePromise = rejectPromise = noop;
+                _reject = function rejectPromise(reason) {
+                    _resolve = _reject = noop;
                     deferred.reject(reason);
                 };
                 then.call(
                     x,
-                    function(y) { resolvePromise(y); },
-                    function(r) { rejectPromise(r); }
+                    function(y) { _resolve(y); },
+                    function(r) { _reject(r); }
                 );
             } else {
                 deferred.resolve(x);
             }
         } catch (e) {
-            rejectPromise(e);
+            _reject(e);
         }
     }
 
