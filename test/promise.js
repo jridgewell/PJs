@@ -109,7 +109,7 @@ describe('PJs', function() {
     describe('.reject', function() {
         function rejectsWith(rejection, description) {
             it('rejects with a ' + description, function() {
-                return Promise.resolve(rejection).catch(function(value) {
+                return Promise.reject(rejection).catch(function(value) {
                     expect(value).to.equal(rejection);
                 });
             });
@@ -148,7 +148,7 @@ describe('PJs', function() {
             expect(Promise.cast(p)).to.equal(p);
         });
 
-        it('when subclassed', function() {
+        describe('when subclassed', function() {
             function SubClass() {}
             SubClass.prototype = Object.create(Promise.prototype);
             SubClass.prototype.constructor = SubClass;
