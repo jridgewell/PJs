@@ -30,7 +30,7 @@
                 }
             };
             _resolve = _reject = noop;
-            doResolve(deferred, constant(value));
+            doResolve(deferred, function() { return value; });
         };
 
         resolver(function(value) {
@@ -52,7 +52,9 @@
         return this.catch(function(error) {
             // Defer it, so our promise doesn't catch
             // it and turn it into a rejected promise.
-            defer(partial(rejectIdentity, error));
+            defer(function() {
+                throw error;
+            });
 
             throw error;
         });
@@ -126,9 +128,9 @@
     }
     FulfilledPromise.prototype.resolve = function(deferred, onFulfilled) {
         if (!isFunction(onFulfilled)) { return; }
-        onFulfilled = partial(onFulfilled, this.value);
+        var value = this.value;
 
-        defer(function() { doResolve(deferred, onFulfilled); });
+        defer(function() { doResolve(deferred, function() { return onFulfilled(value); }); });
         return deferred.promise;
     };
 
@@ -137,9 +139,9 @@
     }
     RejectedPromise.prototype.resolve = function(deferred, _, onRejected) {
         if (!isFunction(onRejected)) { return; }
-        onRejected = partial(onRejected, this.reason);
+        var reason = this.reason;
 
-        defer(function() { doResolve(deferred, onRejected); });
+        defer(function() { doResolve(deferred, function() { return onRejected(reason); }); });
         return deferred.promise;
     };
 
@@ -172,14 +174,6 @@
     function isObject(obj) {
         return obj && (typeof obj === 'object' || typeof obj === 'function');
     }
-    function partial(fn, arg) {
-        return function() {
-            return fn.call(this, arg);
-        };
-    }
-    function constant(x) {
-        return function() { return x; };
-    }
     function after(times, fn) {
         return function() {
             if (--times < 1) { fn(); }
@@ -192,7 +186,11 @@
         };
     }
     function createDeferred(Promise) {
-        var deferred = {};
+        var deferred = {
+            promise: void 0,
+            resolve: void 0,
+            reject: void 0
+        };
         deferred.promise = new Promise(function(resolve, reject) {
             deferred.resolve = resolve;
             deferred.reject = reject;
@@ -225,15 +223,16 @@
         var _reject = deferred.reject;
         var _resolve;
         var then;
+        var x;
         try {
-            var x = xFn();
+            x = xFn();
             if (x === deferred.promise) {
                 throw new TypeError('A promise cannot be fulfilled with itself.');
             }
             if (isObject(x) && (then = x.then) && isFunction(then)) {
                 _resolve = function resolvePromise(y) {
                     _resolve = _reject = noop;
-                    doResolve(deferred, constant(y));
+                    doResolve(deferred, function() { return y; });
                 };
                 _reject = function rejectPromise(reason) {
                     _resolve = _reject = noop;
