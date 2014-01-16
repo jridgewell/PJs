@@ -330,7 +330,7 @@ describe('PJs', function() {
                 });
             });
 
-            describe('when value comes first', function() {
+            describe('when promise comes first', function() {
                 describe('when promise is already resolved', function() {
                     it('fulfills with value of promise', function() {
                         return Promise.race([Promise.resolve(1), 2]).then(function(value) {
