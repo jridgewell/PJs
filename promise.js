@@ -149,18 +149,17 @@
         this.queue = [];
     }
     PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
-        this.queue.push([
+        this.queue.push(
             deferred,
             isFunction(onFulfilled) ? onFulfilled : identity,
             isFunction(onRejected) ? onRejected : rejectIdentity
-        ]);
+        );
         return deferred.promise;
     };
     PendingPromise.prototype.resolveQueued = function(promise) {
-        var queue = this.queue, tuple;
-        for (var i = 0, l = queue.length; i < l; i++) {
-            tuple = queue[i];
-            promise.resolve(tuple[0], tuple[1], tuple[2]);
+        var queue = this.queue;
+        for (var i = 0, l = queue.length; i < l; i += 3) {
+            promise.resolve(queue[i], queue[i + 1], queue[i + 2]);
         }
     };
 
