@@ -10,7 +10,11 @@
 
         this.then = function then(onFulfilled, onRejected) {
             var deferred = createDeferred(self.constructor);
-            return promise.resolve(deferred, onFulfilled, onRejected) || self;
+            return promise.resolve(
+                deferred,
+                isFunction(onFulfilled) ? onFulfilled : void 0,
+                isFunction(onRejected) ? onRejected : void 0
+            ) || self;
         };
 
         var _reject = function reject(reason) {
@@ -127,7 +131,7 @@
         this.value = value;
     }
     FulfilledPromise.prototype.resolve = function(deferred, onFulfilled) {
-        if (!isFunction(onFulfilled)) { return; }
+        if (!onFulfilled) { return; }
         var value = this.value;
 
         defer(function() { doResolve(deferred, function() { return onFulfilled(value); }); });
@@ -138,7 +142,7 @@
         this.reason = reason;
     }
     RejectedPromise.prototype.resolve = function(deferred, _, onRejected) {
-        if (!isFunction(onRejected)) { return; }
+        if (!onRejected) { return; }
         var reason = this.reason;
 
         defer(function() { doResolve(deferred, function() { return onRejected(reason); }); });
@@ -162,7 +166,6 @@
             promise.resolve(queue[i], queue[i + 1], queue[i + 2]);
         }
     };
-
 
     function noop() {}
     function identity(x) { return x; }
