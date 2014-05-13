@@ -5,43 +5,42 @@
      ****************************/
 
     function Promise(resolver) {
-        var _value;
-        var promise = this;
+        var promise = new PendingPromise();
+        var self = this;
 
-        this.then = function(onFulfilled, onRejected) {
-            var deferred = Promise.deferred();
-            return intermediateHandler.call(promise, deferred, _value, onFulfilled, onRejected);
+        this.then = function then(onFulfilled, onRejected) {
+            var deferred = createDeferred(self.constructor);
+            return promise.resolve(
+                deferred,
+                isFunction(onFulfilled) ? onFulfilled : void 0,
+                isFunction(onRejected) ? onRejected : void 0
+            ) || self;
         };
 
-        var intermediateHandler = new PendingHandler();
-
-        function setNewHandler(newHandler) {
-            intermediateHandler.handle(newHandler, _value);
-            intermediateHandler = newHandler;
-        }
-
-        var reject = function(reason) {
-            resolve = reject = noop;
-            _value = reason;
-            setNewHandler(rejectedHandler);
+        var _reject = function reject(reason) {
+            _resolve = _reject = noop;
+            var p = new RejectedPromise(reason);
+            promise.resolveQueued(p);
+            promise = p;
         };
-        var resolve = function(value) {
+        var _resolve = function resolve(value) {
             var deferred = {
-                promise: promise,
-                reject: reject,
+                promise: self,
+                reject: _reject,
                 resolve: function(value) {
-                    _value = value;
-                    setNewHandler(fulfilledHandler);
+                    var p = new FulfilledPromise(value);
+                    promise.resolveQueued(p);
+                    promise = p;
                 }
             };
-            resolve = reject = noop;
-            doResolve(deferred, constant(value));
+            _resolve = _reject = noop;
+            doResolve(deferred, function() { return value; });
         };
 
         resolver(function(value) {
-            resolve(value);
+            _resolve(value);
         }, function(reason) {
-            reject(reason);
+            _reject(reason);
         });
     }
 
@@ -69,29 +68,24 @@
      Public Static Methods
      ****************************/
 
-    Promise.resolve = function(value) {
+    Promise.resolve = function resolve(value) {
         return new this(function(resolve) {
             resolve(value);
         });
     };
 
-    Promise.reject = function(reason) {
+    Promise.reject = function reject(reason) {
         return new this(function(_, reject) {
             reject(reason);
         });
     };
 
-    Promise.deferred = function() {
-        var deferred = {};
-        deferred.promise = new this(function(resolve, reject) {
-            deferred.resolve = resolve;
-            deferred.reject = reject;
-        });
-        return deferred;
+    Promise.deferred = function deferred() {
+        return createDeferred(this);
     };
 
-    Promise.cast = function(obj) {
-        if (obj && isObject(obj) && obj.constructor === this) {
+    Promise.cast = function cast(obj) {
+        if (isObject(obj) && obj.constructor === this) {
             return obj;
         }
 
@@ -100,7 +94,7 @@
         });
     };
 
-    Promise.all = function(promises) {
+    Promise.all = function all(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
             var l = promises.length;
@@ -118,7 +112,7 @@
         });
     };
 
-    Promise.race = function(promises) {
+    Promise.race = function race(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
             var promise;
@@ -132,6 +126,47 @@
     /****************************
       Private functions
      ****************************/
+
+    function FulfilledPromise(value) {
+        this.value = value;
+    }
+    FulfilledPromise.prototype.resolve = function(deferred, onFulfilled) {
+        if (!onFulfilled) { return; }
+        var value = this.value;
+
+        defer(function() { doResolve(deferred, function() { return onFulfilled(value); }); });
+        return deferred.promise;
+    };
+
+    function RejectedPromise(reason) {
+        this.reason = reason;
+    }
+    RejectedPromise.prototype.resolve = function(deferred, _, onRejected) {
+        if (!onRejected) { return; }
+        var reason = this.reason;
+
+        defer(function() { doResolve(deferred, function() { return onRejected(reason); }); });
+        return deferred.promise;
+    };
+
+    function PendingPromise() {
+        this.queue = [];
+    }
+    PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
+        this.queue.push(
+            deferred,
+            isFunction(onFulfilled) ? onFulfilled : identity,
+            isFunction(onRejected) ? onRejected : rejectIdentity
+        );
+        return deferred.promise;
+    };
+    PendingPromise.prototype.resolveQueued = function(promise) {
+        var queue = this.queue;
+        for (var i = 0, l = queue.length; i < l; i += 3) {
+            promise.resolve(queue[i], queue[i + 1], queue[i + 2]);
+        }
+    };
+
     function noop() {}
     function identity(x) { return x; }
     function rejectIdentity(x) { throw x; }
@@ -140,19 +175,6 @@
     }
     function isObject(obj) {
         return obj && (typeof obj === 'object' || typeof obj === 'function');
-    }
-    function assumeFunction(fn, backup) {
-        return (isFunction(fn)) ? fn : backup;
-    }
-    function partial(fn, arg1) {
-        return function(arg2) {
-            return fn.call(void 0, arg1, arg2);
-        };
-    }
-    function constant(x) {
-        return function() {
-            return x;
-        };
     }
     function after(times, fn) {
         return function() {
@@ -165,8 +187,24 @@
             fn();
         };
     }
+    function createDeferred(Promise) {
+        var deferred = {
+            promise: void 0,
+            resolve: void 0,
+            reject: void 0
+        };
+        deferred.promise = new Promise(function(resolve, reject) {
+            deferred.resolve = resolve;
+            deferred.reject = reject;
+        });
+        return deferred;
+    }
 
-    var defer = (function(queue) {
+    var nextTick = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
+        : typeof setImmediate !== 'undefined' ? setImmediate
+        : function(fn) { setTimeout(fn, 1); };
+    var defer = (function() {
+        var queue = [];
         function flush() {
             // Do **NOT** cache queue.length.
             // Any callback in the queue can append to the queue,
@@ -176,80 +214,43 @@
             }
             queue = [];
         }
-        return function(fn) {
+        return function defer(fn) {
             if (queue.push(fn) === 1) {
                 nextTick(flush);
             }
         };
-    })([]);
-    var nextTick = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
-        : typeof setImmediate !== 'undefined' ? setImmediate
-        : function(fn) { setTimeout(fn, 1); };
+    })();
 
     function doResolve(deferred, xFn) {
+        var _reject = deferred.reject;
+        var _resolve;
         var then;
-        var resolvePromise = function(y) {
-            resolvePromise = rejectPromise = noop;
-            doResolve(deferred, constant(y));
-        };
-        var rejectPromise = function(reason) {
-            resolvePromise = rejectPromise = noop;
-            deferred.reject(reason);
-        };
+        var x;
         try {
-            var x = xFn();
+            x = xFn();
             if (x === deferred.promise) {
-                return rejectPromise(new TypeError('A promise cannot be fulfilled with itself.'));
+                throw new TypeError('A promise cannot be fulfilled with itself.');
             }
             if (isObject(x) && (then = x.then) && isFunction(then)) {
+                _resolve = function resolvePromise(y) {
+                    _resolve = _reject = noop;
+                    doResolve(deferred, function() { return y; });
+                };
+                _reject = function rejectPromise(reason) {
+                    _resolve = _reject = noop;
+                    deferred.reject(reason);
+                };
                 then.call(
                     x,
-                    function(y) { resolvePromise(y); },
-                    function(r) { rejectPromise(r); }
+                    function(y) { _resolve(y); },
+                    function(r) { _reject(r); }
                 );
             } else {
                 deferred.resolve(x);
             }
         } catch (e) {
-            rejectPromise(e);
+            _reject(e);
         }
-    }
-
-    function PendingHandler() {
-        var queue = [];
-        function pendingHandler(deferred, _, onFulfilled, onRejected) {
-            queue.push([
-                deferred,
-                assumeFunction(onFulfilled, identity),
-                assumeFunction(onRejected, rejectIdentity)
-            ]);
-            return deferred.promise;
-        }
-        pendingHandler.handle = queueHandle(queue);
-        return pendingHandler;
-    }
-    function queueHandle(queue) {
-        return function(handler, value) {
-            var tuple;
-            for (var i = 0, l = queue.length; i < l; i++) {
-                tuple = queue[i];
-                handler(tuple[0], value, tuple[1], tuple[2]);
-            }
-        };
-    }
-    function fulfilledHandler(deferred, value, onFulfilled) {
-        if (!isFunction(onFulfilled)) { return this; }
-        defer(function() {
-            doResolve(deferred, partial(onFulfilled, value));
-        });
-        return deferred.promise;
-    }
-    function rejectedHandler(deferred, value, _, onRejected) {
-        if (!isFunction(onRejected)) { return this; }
-        defer(function() {
-            doResolve(deferred, partial(onRejected, value));
-        });
-        return deferred.promise;
     }
 
     if (typeof exports !== 'undefined') {
