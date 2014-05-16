@@ -70,7 +70,11 @@
      Public Static Methods
      ****************************/
 
-    Promise.resolve = function resolve() {
+    Promise.resolve = function resolve(obj) {
+        if (isObject(obj) && obj.constructor === this) {
+            return obj;
+        }
+
         var values = arguments;
         return new this(function(resolve) {
             resolve.apply(void 0, values);
@@ -86,16 +90,6 @@
 
     Promise.deferred = function deferred() {
         return createDeferred(this);
-    };
-
-    Promise.cast = function cast(obj) {
-        if (isObject(obj) && obj.constructor === this) {
-            return obj;
-        }
-
-        return new this(function(resolve) {
-            resolve(obj);
-        });
     };
 
     Promise.all = function all(promises) {
@@ -115,7 +109,7 @@
             var promise;
             for (var i = 0; i < l; i++) {
                 promise = promises[i];
-                Constructor.cast(promise).then(fillSlot(values, i, resolveAfter), reject);
+                Constructor.resolve(promise).then(fillSlot(values, i, resolveAfter), reject);
             }
         });
     };
@@ -126,7 +120,7 @@
             var promise;
             for (var i = 0, l = promises.length; i < l; i++) {
                 promise = promises[i];
-                Constructor.cast(promise).then(resolve, reject);
+                Constructor.resolve(promise).then(resolve, reject);
             }
         });
     };

@@ -126,6 +126,27 @@ describe('PJs', function() {
     });
 
     describe('.resolve', function() {
+        it('returns promise if promise is an instanceof Promise', function() {
+            var p = Promise.resolve(1);
+            expect(Promise.resolve(p)).to.equal(p);
+        });
+
+        describe('when subclassed', function() {
+            function SubClass() {}
+            SubClass.prototype = Object.create(Promise.prototype);
+            SubClass.prototype.constructor = SubClass;
+            SubClass.resolve = Promise.resolve;
+
+            it('returns promise if promise is an instanceof SubClass', function() {
+                var p = new SubClass();
+                expect(SubClass.resolve(p)).to.equal(p);
+            });
+
+            it('returns new promise if promise is an instanceof Promise', function() {
+                var p = Promise.resolve(1);
+                expect(SubClass.resolve(p)).not.to.equal(p);
+            });
+        });
         function fulfillsWith(resolution, description) {
             it('fulfills with a ' + description, function() {
                 return Promise.resolve(resolution).then(function(value) {
@@ -134,26 +155,28 @@ describe('PJs', function() {
             });
         }
 
-        fulfillsWith({}, 'object');
-        fulfillsWith(1, 'number');
-        fulfillsWith(0, 'zero');
-        fulfillsWith(true, 'true');
-        fulfillsWith(false, 'false');
-        fulfillsWith(undefined, 'undefined');
-        fulfillsWith(null, 'null');
-        fulfillsWith(new Error(), 'error');
-        fulfillsWith('', 'blank string');
+        describe('when not instanceof Promise', function() {
+            fulfillsWith({}, 'object');
+            fulfillsWith(1, 'number');
+            fulfillsWith(0, 'zero');
+            fulfillsWith(true, 'true');
+            fulfillsWith(false, 'false');
+            fulfillsWith(undefined, 'undefined');
+            fulfillsWith(null, 'null');
+            fulfillsWith(new Error(), 'error');
+            fulfillsWith('', 'blank string');
 
-        describe('when passed a thenable', function() {
-            it('becomes fulfilled if thenable is fulfilled', function() {
-                return Promise.resolve(Promise.resolve(1)).then(function(value) {
-                    expect(value).to.equal(1);
+            describe('when passed a thenable', function() {
+                it('becomes fulfilled if thenable is fulfilled', function() {
+                    return Promise.resolve(Promise.resolve(1)).then(function(value) {
+                        expect(value).to.equal(1);
+                    });
                 });
-            });
 
-            it('becomes rejected if thenable is rejected', function() {
-                return Promise.resolve(Promise.reject(1)).catch(function(value) {
-                    expect(value).to.equal(1);
+                it('becomes rejected if thenable is rejected', function() {
+                    return Promise.resolve(Promise.reject(1)).catch(function(value) {
+                        expect(value).to.equal(1);
+                    });
                 });
             });
         });
@@ -190,66 +213,6 @@ describe('PJs', function() {
                 var rejected = Promise.reject(1);
                 return Promise.reject(rejected).catch(function(value) {
                     expect(value).to.equal(rejected);
-                });
-            });
-        });
-    });
-
-    describe('.cast', function() {
-        it('returns promise if promise is an instanceof Promise', function() {
-            var p = Promise.resolve(1);
-            expect(Promise.cast(p)).to.equal(p);
-        });
-
-        describe('when subclassed', function() {
-            function SubClass() {}
-            SubClass.prototype = Object.create(Promise.prototype);
-            SubClass.prototype.constructor = SubClass;
-            SubClass.cast = Promise.cast;
-
-            it('returns promise if promise is an instanceof SubClass', function() {
-                var p = new SubClass();
-                expect(SubClass.cast(p)).to.equal(p);
-            });
-
-            it('returns new promise if promise is an instanceof Promise', function() {
-                var p = Promise.resolve(1);
-                expect(SubClass.cast(p)).not.to.equal(p);
-            });
-        });
-
-        describe('when not instanceof Promise', function() {
-            function fulfillsWith(resolution, description) {
-                it('fulfills new promise with ' + description, function() {
-                    var p = Promise.cast(resolution).then(function(value) {
-                        expect(p).not.to.equal(resolution);
-                        expect(value).to.equal(resolution);
-                    });
-                    return p;
-                });
-            }
-
-            fulfillsWith({}, 'object');
-            fulfillsWith(1, 'number');
-            fulfillsWith(0, 'zero');
-            fulfillsWith(true, 'true');
-            fulfillsWith(false, 'false');
-            fulfillsWith(undefined, 'undefined');
-            fulfillsWith(null, 'null');
-            fulfillsWith(new Error(), 'error');
-            fulfillsWith('', 'blank string');
-
-            describe('when passed a thenable', function() {
-                it('becomes fulfilled if thenable is fulfilled', function() {
-                    return Promise.resolve(Promise.resolve(1)).then(function(value) {
-                        expect(value).to.equal(1);
-                    });
-                });
-
-                it('becomes rejected if thenable is rejected', function() {
-                    return Promise.resolve(Promise.reject(1)).catch(function(value) {
-                        expect(value).to.equal(1);
-                    });
                 });
             });
         });
