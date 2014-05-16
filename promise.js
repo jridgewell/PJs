@@ -17,30 +17,32 @@
             ) || self;
         };
 
-        var _reject = function reject(reason) {
+        var _reject = function reject() {
             _resolve = _reject = noop;
-            var p = new RejectedPromise(reason);
+            var reasons = toArray.apply(void 0, arguments);
+            var p = new RejectedPromise(reasons);
             promise.resolveQueued(p);
             promise = p;
         };
-        var _resolve = function resolve(value) {
+        var _resolve = function resolve() {
             var deferred = {
                 promise: self,
                 reject: _reject,
-                resolve: function(value) {
-                    var p = new FulfilledPromise(value);
+                resolve: function() {
+                    var values = toArray.apply(void 0, arguments);
+                    var p = new FulfilledPromise(values);
                     promise.resolveQueued(p);
                     promise = p;
                 }
             };
             _resolve = _reject = noop;
-            doResolve(deferred, function() { return value; });
+            doResolve.apply(deferred, arguments);
         };
 
-        resolver(function(value) {
-            _resolve(value);
-        }, function(reason) {
-            _reject(reason);
+        resolver(function() {
+            _resolve.apply(void 0, arguments);
+        }, function() {
+            _reject.apply(void 0, arguments);
         });
     }
 
@@ -68,15 +70,17 @@
      Public Static Methods
      ****************************/
 
-    Promise.resolve = function resolve(value) {
+    Promise.resolve = function resolve() {
+        var values = arguments;
         return new this(function(resolve) {
-            resolve(value);
+            resolve.apply(void 0, values);
         });
     };
 
-    Promise.reject = function reject(reason) {
+    Promise.reject = function reject() {
+        var reasons = arguments;
         return new this(function(_, reject) {
-            reject(reason);
+            reject.apply(void 0, reasons);
         });
     };
 
@@ -99,10 +103,14 @@
         return new Constructor(function(resolve, reject) {
             var l = promises.length;
             var values = Array(l);
-            var resolveAfter = after(l + 1, function() {
-                resolve(values);
-            });
-            resolveAfter();
+            var times = l;
+
+            if (times === 0) {
+                return resolve(values);
+            }
+            var resolveAfter = function() {
+                if (--times === 0) { resolve(values); }
+            };
 
             var promise;
             for (var i = 0; i < l; i++) {
@@ -127,25 +135,25 @@
       Private functions
      ****************************/
 
-    function FulfilledPromise(value) {
-        this.value = value;
+    function FulfilledPromise(values) {
+        this.values = values;
     }
     FulfilledPromise.prototype.resolve = function(deferred, onFulfilled) {
         if (!onFulfilled) { return; }
-        var value = this.value;
+        var values = this.values;
 
-        defer(function() { doResolve(deferred, function() { return onFulfilled(value); }); });
+        defer(tryCatchDeferred(deferred, onFulfilled, values));
         return deferred.promise;
     };
 
-    function RejectedPromise(reason) {
-        this.reason = reason;
+    function RejectedPromise(reasons) {
+        this.reasons = reasons;
     }
     RejectedPromise.prototype.resolve = function(deferred, _, onRejected) {
         if (!onRejected) { return; }
-        var reason = this.reason;
+        var reasons = this.reasons;
 
-        defer(function() { doResolve(deferred, function() { return onRejected(reason); }); });
+        defer(tryCatchDeferred(deferred, onRejected, reasons));
         return deferred.promise;
     };
 
@@ -176,16 +184,19 @@
     function isObject(obj) {
         return obj && (typeof obj === 'object' || typeof obj === 'function');
     }
-    function after(times, fn) {
-        return function() {
-            if (--times < 1) { fn(); }
-        };
-    }
     function fillSlot(array, index, fn) {
         return function(value) {
             array[index] = value;
-            fn();
+            if (fn) { fn(); }
         };
+    }
+    function toArray() {
+        var l = arguments.length;
+        var array = Array(l);
+        for (var i = 0; i < l; i++) {
+            array[i] = arguments[i];
+        }
+        return array;
     }
     function createDeferred(Promise) {
         var deferred = {
@@ -199,54 +210,60 @@
         });
         return deferred;
     }
+    function tryCatchDeferred(deferred, fn, args) {
+        return function() {
+            try {
+                doResolve.apply(deferred, [fn.apply(void 0, args)]);
+            } catch (e) {
+                deferred.reject(e);
+            }
+        };
+    }
 
     var nextTick = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
-        : typeof setImmediate !== 'undefined' ? setImmediate
-        : function(fn) { setTimeout(fn, 1); };
+     : typeof setImmediate !== 'undefined' ? setImmediate
+     : function(fn) { setTimeout(fn, 1); };
     var defer = (function() {
         var queue = [];
+        var l = 0;
         function flush() {
-            // Do **NOT** cache queue.length.
-            // Any callback in the queue can append to the queue,
-            // and we want to handle them too.
-            for (var i = 0; i < queue.length; i++) {
+            for (var i = 0; i < l; i++) {
                 queue[i]();
             }
             queue = [];
+            l = 0;
         }
         return function defer(fn) {
-            if (queue.push(fn) === 1) {
-                nextTick(flush);
-            }
+            l = queue.push(fn);
+            if (l === 1) { nextTick(flush); }
         };
     })();
 
-    function doResolve(deferred, xFn) {
+    function doResolve() {
+        var deferred = this;
         var _reject = deferred.reject;
-        var _resolve;
-        var then;
-        var x;
+        var x = arguments[0];
         try {
-            x = xFn();
+            var then;
             if (x === deferred.promise) {
                 throw new TypeError('A promise cannot be fulfilled with itself.');
             }
             if (isObject(x) && (then = x.then) && isFunction(then)) {
-                _resolve = function resolvePromise(y) {
+                var _resolve = function resolvePromise() {
                     _resolve = _reject = noop;
-                    doResolve(deferred, function() { return y; });
+                    doResolve.apply(deferred, arguments);
                 };
-                _reject = function rejectPromise(reason) {
+                _reject = function rejectPromise() {
                     _resolve = _reject = noop;
-                    deferred.reject(reason);
+                    deferred.reject.apply(void 0, arguments);
                 };
                 then.call(
                     x,
-                    function(y) { _resolve(y); },
-                    function(r) { _reject(r); }
+                    function() { _resolve.apply(void 0, arguments); },
+                    function() { _reject.apply(void 0, arguments); }
                 );
             } else {
-                deferred.resolve(x);
+                deferred.resolve.apply(void 0, arguments);
             }
         } catch (e) {
             _reject(e);
