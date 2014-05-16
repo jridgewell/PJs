@@ -8,6 +8,18 @@ chai.use(require('chai-as-promised'));
 chai.use(require('sinon-chai'));
 require('mocha-as-promised')();
 
+var slice = Array.prototype.slice;
+function constant(x) {
+    return function() {
+        return x;
+    };
+}
+function expectArray(array) {
+    return function() {
+        expect(slice.call(arguments)).to.include.members(array);
+    };
+}
+
 describe('PJs', function() {
 
     describe('constructor', function() {
@@ -16,6 +28,11 @@ describe('PJs', function() {
         });
 
         describe('resolve', function() {
+            it('can be fulfilled with multiple values', function() {
+                return Promise.resolve(1, 2, 3).
+                    then(expectArray([1, 2, 3]));
+            });
+
             describe('when passed a thenable', function() {
                 it('becomes fulfilled if thenable is fulfilled', function() {
                     return Promise.resolve(Promise.resolve(1)).then(function(value) {
@@ -32,6 +49,11 @@ describe('PJs', function() {
         });
 
         describe('reject', function() {
+            it('can be rejected with multiple values', function() {
+                return Promise.reject(1, 2, 3).
+                    then(null, expectArray([1, 2, 3]));
+            });
+
             describe('when passed a thenable', function() {
                 it("rejects with thenable object even if thenable is fulfilled", function() {
                     var resolved = Promise.resolve(1);
@@ -68,6 +90,37 @@ describe('PJs', function() {
 
             return promise.then(function(value){
                 expect(value).to.equal(iterations * (iterations + 1) / 2);
+            });
+        });
+    });
+
+    describe('#then', function() {
+        var resolved = Promise.resolve(1, 2, 3);
+        var rejected = Promise.reject(1, 2, 3);
+        describe('when resolved', function() {
+            it('can be fulfilled with a promise with multiple values', function() {
+                return Promise.resolve().
+                    then(constant(resolved)).
+                    then(expectArray([1, 2, 3]));
+            });
+
+            it('can be rejected with a promise with multiple values', function() {
+                return Promise.resolve().
+                    then(constant(rejected)).
+                    then(null, expectArray([1, 2, 3]));
+            });
+        });
+        describe('when rejected', function() {
+            it('can be fulfilled with a promise with multiple values', function() {
+                return Promise.reject().
+                    then(null, constant(resolved)).
+                    then(expectArray([1, 2, 3]));
+            });
+
+            it('can be rejected with a promise with multiple values', function() {
+                return Promise.reject().
+                    then(null, constant(rejected)).
+                    then(null, expectArray([1, 2, 3]));
             });
         });
     });
