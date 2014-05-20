@@ -152,8 +152,8 @@
     PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
         this.queue.push(
             deferred,
-            isFunction(onFulfilled) ? onFulfilled : identity,
-            isFunction(onRejected) ? onRejected : rejectIdentity
+            onFulfilled || deferred.resolve,
+            onRejected || deferred.reject
         );
         return deferred.promise;
     };
@@ -165,8 +165,6 @@
     };
 
     function noop() {}
-    function identity(x) { return x; }
-    function rejectIdentity(x) { throw x; }
     function isFunction(fn) {
         return typeof fn === 'function';
     }

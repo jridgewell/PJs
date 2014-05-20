@@ -97,30 +97,55 @@ describe('PJs', function() {
     describe('#then', function() {
         var resolved = Promise.resolve(1, 2, 3);
         var rejected = Promise.reject(1, 2, 3);
+        var expect123 = expectArray([1, 2, 3]);
+
         describe('when resolved', function() {
             it('can be fulfilled with a promise with multiple values', function() {
                 return Promise.resolve().
                     then(constant(resolved)).
-                    then(expectArray([1, 2, 3]));
+                    then(expect123);
             });
 
             it('can be rejected with a promise with multiple values', function() {
                 return Promise.resolve().
                     then(constant(rejected)).
-                    then(null, expectArray([1, 2, 3]));
+                    then(null, expect123);
             });
         });
+
         describe('when rejected', function() {
             it('can be fulfilled with a promise with multiple values', function() {
                 return Promise.reject().
                     then(null, constant(resolved)).
-                    then(expectArray([1, 2, 3]));
+                    then(expect123);
             });
 
             it('can be rejected with a promise with multiple values', function() {
                 return Promise.reject().
                     then(null, constant(rejected)).
-                    then(null, expectArray([1, 2, 3]));
+                    then(null, expect123);
+            });
+        });
+
+        describe('when pending', function() {
+            describe('then resolved', function() {
+                it('will recieve with multiple values in interrupted #then chain', function() {
+                    return new Promise(function(resolve) {
+                        setTimeout(function() { resolve(1, 2, 3); }, 1);
+                    }).then(null, function() {
+                        throw new Error('This should not be called');
+                    }).then(expect123);
+                });
+            });
+
+            describe('then rejected', function() {
+                it('will recieve with multiple values in interrupted #then chain', function() {
+                    return new Promise(function(_, reject) {
+                        setTimeout(function() { reject(1, 2, 3); }, 1);
+                    }).then(function() {
+                        throw new Error('This should not be called');
+                    }).then(null, expect123);
+                });
             });
         });
     });
