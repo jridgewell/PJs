@@ -9,7 +9,7 @@
         var self = this;
 
         this.then = function then(onFulfilled, onRejected) {
-            var deferred = createDeferred(self.constructor);
+            var deferred = new Deferred(self.constructor);
             return promise.resolve(
                 deferred,
                 isFunction(onFulfilled) ? onFulfilled : void 0,
@@ -90,7 +90,7 @@
     };
 
     Promise.deferred = function deferred() {
-        return createDeferred(this);
+        return new Deferred(this);
     };
 
     Promise.all = function all(promises) {
@@ -128,6 +128,13 @@
       Private functions
      ****************************/
 
+    function Deferred(Promise) {
+        var deferred = this;
+        this.promise = new Promise(function(resolve, reject) {
+            deferred.resolve = resolve;
+            deferred.reject = reject;
+        });
+    }
     function FulfilledPromise(values) {
         this.values = values;
     }
@@ -150,17 +157,18 @@
         this.queue = [];
     }
     PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
-        this.queue.push(
-            deferred,
-            onFulfilled || deferred.resolve,
-            onRejected || deferred.reject
-        );
+        this.queue.push({
+            deferred: deferred,
+            onFulfilled: onFulfilled || deferred.resolve,
+            onRejected: onRejected || deferred.reject
+        });
         return deferred.promise;
     };
     PendingPromise.prototype.resolveQueued = function(promise) {
         var queue = this.queue;
-        for (var i = 0, l = queue.length; i < l; i += 3) {
-            promise.resolve(queue[i], queue[i + 1], queue[i + 2]);
+        for (var i = 0, l = queue.length; i < l; i++) {
+            var next = queue[i];
+            promise.resolve(next.deferred, next.onFulfilled, next.onRejected);
         }
     };
 
@@ -185,14 +193,6 @@
         }
         return array;
     }
-    function createDeferred(Promise) {
-        var deferred = {};
-        deferred.promise = new Promise(function(resolve, reject) {
-            deferred.resolve = resolve;
-            deferred.reject = reject;
-        });
-        return deferred;
-    }
     function tryCatchDeferred(deferred, fn, args) {
         return function() {
             try {
@@ -205,7 +205,7 @@
 
     var nextTick = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
      : typeof setImmediate !== 'undefined' ? setImmediate
-     : function(fn) { setTimeout(fn, 1); };
+     : function(fn) { setTimeout(fn, 0); };
     var defer = (function() {
         var queue = [];
         var l = 0;
