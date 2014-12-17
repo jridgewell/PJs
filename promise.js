@@ -13,6 +13,7 @@
         var promise;
 
         this.then = function then(onFulfilled, onRejected) {
+            if (!onFulfilled && !onRejected) { return this; }
             if (!promise) { promise = new PendingPromise(); }
             var deferred = new Deferred(self.constructor);
             return promise.resolve(
