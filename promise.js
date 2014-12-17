@@ -78,14 +78,14 @@
 
         var values = toArray.apply(void 0, arguments);
         return new this(function(resolve) {
-            resolve.apply(void 0, values);
+            apply(resolve, values);
         });
     };
 
     Promise.reject = function reject() {
         var reasons = toArray.apply(void 0, arguments);
         return new this(function(_, reject) {
-            reject.apply(void 0, reasons);
+            apply(reject, reasons);
         });
     };
 
@@ -183,6 +183,9 @@
             array[index] = value;
             if (fn) { fn(); }
         };
+    function apply(fn, args) {
+        return (args.length > 1) ? fn.apply(void 0, args) : fn(args[0]);
+    }
     }
     function toArray() {
         var l = arguments.length;
@@ -202,7 +205,7 @@
     function tryCatchDeferred(deferred, fn, args) {
         return function() {
             try {
-                var result = fn.apply(void 0, args);
+                var result = apply(fn, args);
                 if (deferred.resolve === fn || deferred.reject === fn) { return; }
                 doResolve.call(deferred, result);
             } catch (e) {
@@ -245,15 +248,15 @@
                 };
                 _reject = function rejectPromise() {
                     _resolve = _reject = noop;
-                    deferred.reject.apply(void 0, arguments);
+                    apply(deferred.reject, arguments);
                 };
                 then.call(
                     x,
-                    function() { _resolve.apply(void 0, arguments); },
-                    function() { _reject.apply(void 0, arguments); }
+                    function() { apply(_resolve, arguments); },
+                    function() { apply(_reject, arguments); }
                 );
             } else {
-                deferred.resolve.apply(void 0, arguments);
+                apply(deferred.resolve, arguments);
             }
         } catch (e) {
             _reject(e);
