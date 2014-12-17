@@ -51,7 +51,7 @@ describe('PJs', function() {
         describe('reject', function() {
             it('can be rejected with multiple values', function() {
                 return Promise.reject(1, 2, 3).
-                    then(null, expectArray([1, 2, 3]));
+                    catch(expectArray([1, 2, 3]));
             });
 
             describe('when passed a thenable', function() {
@@ -109,21 +109,21 @@ describe('PJs', function() {
             it('can be rejected with a promise with multiple values', function() {
                 return Promise.resolve().
                     then(constant(rejected)).
-                    then(null, expect123);
+                    catch(expect123);
             });
         });
 
         describe('when rejected', function() {
             it('can be fulfilled with a promise with multiple values', function() {
                 return Promise.reject().
-                    then(null, constant(resolved)).
+                    catch(constant(resolved)).
                     then(expect123);
             });
 
             it('can be rejected with a promise with multiple values', function() {
                 return Promise.reject().
-                    then(null, constant(rejected)).
-                    then(null, expect123);
+                    catch(constant(rejected)).
+                    catch(expect123);
             });
         });
 
@@ -132,7 +132,7 @@ describe('PJs', function() {
                 it('will recieve with multiple values in interrupted #then chain', function() {
                     return new Promise(function(resolve) {
                         setTimeout(function() { resolve(1, 2, 3); }, 1);
-                    }).then(null, function() {
+                    }).catch(function() {
                         throw new Error('This should not be called');
                     }).then(expect123);
                 });
@@ -144,7 +144,7 @@ describe('PJs', function() {
                         setTimeout(function() { reject(1, 2, 3); }, 1);
                     }).then(function() {
                         throw new Error('This should not be called');
-                    }).then(null, expect123);
+                    }).catch(expect123);
                 });
             });
         });
@@ -463,7 +463,7 @@ describe('PJs', function() {
                 function returnTest() {
                     return Promise.reject(test);
                 }
-                return p.catch(returnTest).then(null, function(value) {
+                return p.catch(returnTest).catch(function(value) {
                     expect(value).to.equal(test);
                 });
             });
@@ -473,7 +473,7 @@ describe('PJs', function() {
                 function returnTest() {
                     throw test;
                 }
-                return p.catch(returnTest).then(null, function(value) {
+                return p.catch(returnTest).catch(function(value) {
                     expect(value).to.equal(test);
                 });
             });
