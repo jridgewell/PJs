@@ -178,14 +178,8 @@
     function isObject(obj) {
         return obj && (typeof obj === 'object' || typeof obj === 'function');
     }
-    function fillSlot(array, index, fn) {
-        return function(value) {
-            array[index] = value;
-            if (fn) { fn(); }
-        };
     function apply(fn, args) {
         return (args.length > 1) ? fn.apply(void 0, args) : fn(args[0]);
-    }
     }
     function toArray() {
         var l = arguments.length;
@@ -194,6 +188,12 @@
             array[i] = arguments[i];
         }
         return array;
+    }
+    function fillSlot(array, index, fn) {
+        return function(value) {
+            array[index] = value;
+            fn();
+        };
     }
     function tryCatchResolver(resolver, resolve, reject) {
         try {
