@@ -244,7 +244,7 @@
         var then;
         try {
             if (x === deferred.promise) {
-                throw new TypeError('A promise cannot be fulfilled with itself.');
+                throw new TypeError('A promise cannot be fulfilled with itself');
             }
             if (isObject(x) && (then = x.then) && isFunction(then)) {
                 var _resolve = function resolvePromise() {
