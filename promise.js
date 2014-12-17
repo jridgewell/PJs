@@ -12,7 +12,7 @@
         var self = this;
         var promise;
 
-        this.then = function then(onFulfilled, onRejected) {
+        this.then = function(onFulfilled, onRejected) {
             if (!onFulfilled && !onRejected) { return this; }
             if (!promise) { promise = new PendingPromise(); }
             var deferred = new Deferred(this.constructor);
@@ -24,14 +24,14 @@
             );
         };
 
-        var _reject = function reject() {
+        var _reject = function() {
             _resolve = _reject = noop;
             var reasons = toArray.apply(void 0, arguments);
             var p = new RejectedPromise(reasons);
             if (promise) { promise.resolveQueued(p); }
             promise = p;
         };
-        var _resolve = function resolve() {
+        var _resolve = function() {
             var deferred = {
                 promise: self,
                 reject: _reject,
@@ -77,7 +77,7 @@
      Public Static Methods
      ****************************/
 
-    Promise.resolve = function resolve(obj) {
+    Promise.resolve = function(obj) {
         if (isObject(obj) && obj.constructor === this) {
             return obj;
         }
@@ -88,18 +88,18 @@
         });
     };
 
-    Promise.reject = function reject() {
+    Promise.reject = function() {
         var reasons = toArray.apply(void 0, arguments);
         return new this(function(_, reject) {
             apply(reject, reasons);
         });
     };
 
-    Promise.deferred = function deferred() {
+    Promise.deferred = function() {
         return new Deferred(this);
     };
 
-    Promise.all = function all(promises) {
+    Promise.all = function(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
             var l = promises.length;
@@ -119,7 +119,7 @@
         });
     };
 
-    Promise.race = function race(promises) {
+    Promise.race = function(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
             for (var i = 0, l = promises.length; i < l; i++) {
@@ -248,11 +248,11 @@
                 throw new TypeError('A promise cannot be fulfilled with itself');
             }
             if (isObject(x) && (then = x.then) && isFunction(then)) {
-                var _resolve = function resolvePromise() {
+                var _resolve = function() {
                     _resolve = _reject = noop;
                     doResolve.apply(deferred, arguments);
                 };
-                _reject = function rejectPromise() {
+                _reject = function() {
                     _resolve = _reject = noop;
                     apply(deferred.reject, arguments);
                 };
