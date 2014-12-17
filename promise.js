@@ -40,10 +40,10 @@
             doResolve.apply(deferred, arguments);
         };
 
-        resolver(function() {
-            _resolve.apply(void 0, arguments);
-        }, function() {
-            _reject.apply(void 0, arguments);
+        tryCatchResolver(resolver, function resolve() {
+            apply(_resolve, arguments);
+        }, function reject() {
+            apply(_reject, arguments);
         });
     }
 
@@ -192,6 +192,13 @@
             array[i] = arguments[i];
         }
         return array;
+    }
+    function tryCatchResolver(resolver, resolve, reject) {
+        try {
+            resolver(resolve, reject);
+        } catch (e) {
+            reject(e);
+        }
     }
     function tryCatchDeferred(deferred, fn, args) {
         return function() {
