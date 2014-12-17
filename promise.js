@@ -5,13 +5,15 @@
      ****************************/
 
     function Promise(resolver) {
-        var promise = new PendingPromise();
         if (!this instanceof Promise) {
             throw new TypeError("Constructor Promise requires 'new'");
         }
+
         var self = this;
+        var promise;
 
         this.then = function then(onFulfilled, onRejected) {
+            if (!promise) { promise = new PendingPromise(); }
             var deferred = new Deferred(self.constructor);
             return promise.resolve(
                 deferred,
@@ -25,7 +27,7 @@
             _resolve = _reject = noop;
             var reasons = toArray.apply(void 0, arguments);
             var p = new RejectedPromise(reasons);
-            promise.resolveQueued(p);
+            if (promise) { promise.resolveQueued(p); }
             promise = p;
         };
         var _resolve = function resolve() {
@@ -35,7 +37,7 @@
                 resolve: function resolve() {
                     var values = toArray.apply(void 0, arguments);
                     var p = new FulfilledPromise(values);
-                    promise.resolveQueued(p);
+                    if (promise) { promise.resolveQueued(p); }
                     promise = p;
                 }
             };
