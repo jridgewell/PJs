@@ -223,18 +223,18 @@
      : typeof setImmediate !== 'undefined' ? setImmediate
      : function(fn) { setTimeout(fn, 0); };
     var defer = (function() {
-        var queue = [];
+        var queue = new Array(100);
         var l = 0;
         function flush() {
             for (var i = 0; i < l; i++) {
                 queue[i]();
+                queue[i] = null;
             }
-            queue = [];
             l = 0;
         }
         return function defer(fn) {
-            l = queue.push(fn);
-            if (l === 1) { nextTick(flush); }
+            queue[l] = fn;
+            if (++l === 1) { nextTick(flush); }
         };
     })();
 
