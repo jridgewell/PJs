@@ -12,8 +12,8 @@
             var deferred = new Deferred(self.constructor);
             return promise.resolve(
                 deferred,
-                isFunction(onFulfilled) ? onFulfilled : void 0,
-                isFunction(onRejected) ? onRejected : void 0,
+                isFunction(onFulfilled) ? onFulfilled : deferred.resolve,
+                isFunction(onRejected) ? onRejected : deferred.reject,
                 self
             );
         };
@@ -135,6 +135,7 @@
             deferred.reject = reject;
         });
     }
+
     function FulfilledPromise(values) {
         this.values = values;
     }
@@ -159,7 +160,6 @@
     PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
         this.queue.push({
             deferred: deferred,
-            onFulfilled: onFulfilled || deferred.resolve,
             onRejected: onRejected || deferred.reject
         });
         return deferred.promise;
