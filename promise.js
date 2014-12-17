@@ -202,7 +202,9 @@
     function tryCatchDeferred(deferred, fn, args) {
         return function() {
             try {
-                doResolve.call(deferred, fn.apply(void 0, args));
+                var result = fn.apply(void 0, args);
+                if (deferred.resolve === fn || deferred.reject === fn) { return; }
+                doResolve.call(deferred, result);
             } catch (e) {
                 deferred.reject(e);
             }
