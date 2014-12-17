@@ -6,6 +6,9 @@
 
     function Promise(resolver) {
         var promise = new PendingPromise();
+        if (!this instanceof Promise) {
+            throw new TypeError("Constructor Promise requires 'new'");
+        }
         var self = this;
 
         this.then = function then(onFulfilled, onRejected) {
