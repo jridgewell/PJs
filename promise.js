@@ -29,7 +29,7 @@
             var deferred = {
                 promise: self,
                 reject: _reject,
-                resolve: function() {
+                resolve: function resolve() {
                     var values = toArray.apply(void 0, arguments);
                     var p = new FulfilledPromise(values);
                     promise.resolveQueued(p);
@@ -76,14 +76,14 @@
             return obj;
         }
 
-        var values = arguments;
+        var values = toArray.apply(void 0, arguments);
         return new this(function(resolve) {
             resolve.apply(void 0, values);
         });
     };
 
     Promise.reject = function reject() {
-        var reasons = arguments;
+        var reasons = toArray.apply(void 0, arguments);
         return new this(function(_, reject) {
             reject.apply(void 0, reasons);
         });
@@ -116,10 +116,8 @@
     Promise.race = function race(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
-            var promise;
             for (var i = 0, l = promises.length; i < l; i++) {
-                promise = promises[i];
-                Constructor.resolve(promise).then(resolve, reject);
+                Constructor.resolve(promises[i]).then(resolve, reject);
             }
         });
     };
@@ -160,7 +158,8 @@
     PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
         this.queue.push({
             deferred: deferred,
-            onRejected: onRejected || deferred.reject
+            onFulfilled: onFulfilled,
+            onRejected: onRejected
         });
         return deferred.promise;
     };
