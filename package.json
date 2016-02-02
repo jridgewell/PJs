@@ -1,24 +1,24 @@
 {
   "name": "promise.js",
-  "version": "0.0.1",
-  "description": "A Promises A/+ implementation",
+  "version": "0.1.0",
+  "description": "A tiny Promises A/+ implementation",
   "main": "promise.js",
   "scripts": {
-    "test": "mocha --timeout 200"
+    "test": "grunt test",
+    "lint": "grunt jshint"
   },
   "author": "Justin Ridgewell",
   "license": "MIT",
   "devDependencies": {
-    "promises-aplus-tests": "*",
-    "mocha": "~1.17.0",
     "chai": "~1.8.1",
-    "mocha-as-promised": "~2.0.0",
-    "chai-as-promised": "~4.1.0",
     "grunt": "~0.4.2",
-    "grunt-mocha-test": "~0.8.1",
+    "grunt-cli": "^0.1.13",
     "grunt-contrib-jshint": "~0.8.0",
     "grunt-contrib-uglify": "~0.2.7",
-    "sinon-chai": "~2.4.0",
-    "sinon": "~1.7.3"
+    "grunt-mocha-test": "~0.8.1",
+    "mocha": "~1.17.0",
+    "promises-aplus-tests": "*",
+    "sinon": "~1.7.3",
+    "sinon-chai": "~2.4.0"
   }
 }

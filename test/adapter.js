@@ -8,6 +8,11 @@ module.exports = {
         return Promise.reject(reason);
     },
     deferred: function() {
-        return Promise.deferred();
+        var deferred = {};
+        deferred.promise = new Promise(function(resolve, reject) {
+            deferred.resolve = resolve;
+            deferred.reject = reject;
+        });
+        return deferred;
     }
 };

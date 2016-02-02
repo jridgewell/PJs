@@ -1,124 +1,113 @@
-'use strict';
 (function(root) {
-    /****************************
-     Public Constructor
-     ****************************/
+    'use strict';
 
+    /**
+     * @constructor
+     * @param {function(function(*=), function (*=))} resolver
+     */
     function Promise(resolver) {
-        if (!this instanceof Promise) {
-            throw new TypeError("Constructor Promise requires 'new'");
+        if (!(this instanceof Promise)) {
+            throw new TypeError('Constructor Promise requires `new`');
+        }
+        if (!isFunction(resolver)) {
+            throw new TypeError('Must pass resolver function');
         }
 
-        var self = this;
-        var promise;
+        this._state = PendingPromise;
+        this._value = [];
 
-        this.then = function(onFulfilled, onRejected) {
-            if (!onFulfilled && !onRejected) { return this; }
-            if (!promise) { promise = new PendingPromise(); }
-            var deferred = new Deferred(this.constructor);
-            return promise.resolve(
-                deferred,
-                isFunction(onFulfilled) ? onFulfilled : deferred.resolve,
-                isFunction(onRejected) ? onRejected : deferred.reject,
-                this
-            );
-        };
-
-        var _reject = function() {
-            _resolve = _reject = noop;
-            var reasons = toArray.apply(void 0, arguments);
-            var p = new RejectedPromise(reasons);
-            if (promise) { promise.resolveQueued(p); }
-            promise = p;
-        };
-        var _resolve = function() {
-            var deferred = {
-                promise: self,
-                reject: _reject,
-                resolve: function resolve() {
-                    var values = toArray.apply(void 0, arguments);
-                    var p = new FulfilledPromise(values);
-                    if (promise) { promise.resolveQueued(p); }
-                    promise = p;
-                }
-            };
-            _resolve = _reject = noop;
-            doResolve.apply(deferred, arguments);
-        };
-
-        tryCatchResolver(resolver, function resolve() {
-            apply(_resolve, arguments);
-        }, function reject() {
-            apply(_reject, arguments);
-        });
+        doResolve(
+            this,
+            adopter(this, FulfilledPromise),
+            adopter(this, RejectedPromise),
+            { then: resolver }
+        );
     }
 
     /****************************
      Public Instance Methods
      ****************************/
 
-    Promise.prototype.catch = function(onRejected) {
-        return this.then(void 0, onRejected);
+    /**
+     * @param {function(*)} onFulfilled
+     * @param {function(*)} onRejected
+     */
+    Promise.prototype.then = function(onFulfilled, onRejected) {
+        onFulfilled = isFunction(onFulfilled) ? onFulfilled : void 0;
+        onRejected = isFunction(onRejected) ? onRejected : void 0;
+
+        return this._state(
+            this._value,
+            onFulfilled,
+            onRejected
+        );
     };
 
-    Promise.prototype.throw = function() {
-        return this.catch(function(error) {
-            // Defer it, so our promise doesn't catch
-            // it and turn it into a rejected promise.
-            defer(function() {
-                throw error;
-            });
-
-            throw error;
-        });
+    /**
+     * @param {function(*)} onRejected
+     * @returns {!Promise}
+     */
+    Promise.prototype.catch = function(onRejected) {
+        return this.then(void 0, onRejected);
     };
 
     /****************************
      Public Static Methods
      ****************************/
 
-    Promise.resolve = function(obj) {
-        if (isObject(obj) && obj.constructor === this) {
-            return obj;
+    /**
+     * @param {*=} value
+     * @returns {!Promise}
+     */
+    Promise.resolve = function(value) {
+        if (isObject(value) && value instanceof this) {
+            return /** @type {!Promise} */(value);
         }
 
-        var values = toArray.apply(void 0, arguments);
         return new this(function(resolve) {
-            apply(resolve, values);
+            resolve(value);
         });
     };
 
-    Promise.reject = function() {
-        var reasons = toArray.apply(void 0, arguments);
+    /**
+     * @param {*=} reason
+     * @returns {!Promise}
+     */
+    Promise.reject = function(reason) {
         return new this(function(_, reject) {
-            apply(reject, reasons);
+            reject(reason);
         });
     };
 
-    Promise.deferred = function() {
-        return new Deferred(this);
-    };
-
+    /**
+     * @param {!Array<Promise|*>} promises
+     * @returns {!Promise}
+     */
     Promise.all = function(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
-            var l = promises.length;
-            var values = new Array(l);
-            var times = l;
+            var length = promises.length;
+            var values = new Array(length);
 
-            if (times === 0) {
+            if (length === 0) {
                 return resolve(values);
             }
-            var resolveAfter = function() {
-                if (--times === 0) { resolve(values); }
-            };
 
-            for (var i = 0; i < l; i++) {
-                Constructor.resolve(promises[i]).then(fillSlot(values, i, resolveAfter), reject);
-            }
+            each(promises, function(promise, index) {
+                Constructor.resolve(promise).then(function(value) {
+                    values[index] = value;
+                    if (--length === 0) {
+                        resolve(values);
+                    }
+                }, reject);
+            });
         });
     };
 
+    /**
+     * @param {!Array<Promise|*>} promises
+     * @returns {!Promise}
+     */
     Promise.race = function(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
@@ -132,137 +121,147 @@
       Private functions
      ****************************/
 
+    function FulfilledPromise(value, onFulfilled, _, deferred) {
+        if (!onFulfilled) { return this; }
+        if (!deferred) {
+            deferred = new Deferred(this.constructor);
+        }
+        defer(tryCatchDeferred(deferred, onFulfilled, value));
+        return deferred.promise;
+    }
+
+    function RejectedPromise(reason, _, onRejected, deferred) {
+        if (!onRejected) { return this; }
+        if (!deferred) {
+            deferred = new Deferred(this.constructor);
+        }
+        defer(tryCatchDeferred(deferred, onRejected, reason));
+        return deferred.promise;
+    }
+
+    function PendingPromise(queue, onFulfilled, onRejected, deferred) {
+        if (!onFulfilled && !onRejected) { return this; }
+        if (!deferred) {
+            deferred = new Deferred(this.constructor);
+        }
+        queue.push({
+            deferred: deferred,
+            onFulfilled: onFulfilled || deferred.resolve,
+            onRejected: onRejected || deferred.reject
+        });
+        return deferred.promise;
+    }
+
     function Deferred(Promise) {
         var deferred = this;
         this.promise = new Promise(function(resolve, reject) {
             deferred.resolve = resolve;
             deferred.reject = reject;
         });
+        return deferred;
     }
 
-    function FulfilledPromise(values) {
-        this.values = values;
-    }
-    FulfilledPromise.prototype.resolve = function(deferred, onFulfilled, _, previous) {
-        if (!onFulfilled) { return previous; }
-        defer(tryCatchDeferred(deferred, onFulfilled, this.values));
-        return deferred.promise;
-    };
+    function adopt(promise, state, value) {
+        var queue = promise._value;
+        promise._state = state;
+        promise._value = value;
 
-    function RejectedPromise(reasons) {
-        this.reasons = reasons;
-    }
-    RejectedPromise.prototype.resolve = function(deferred, _, onRejected, previous) {
-        if (!onRejected) { return previous; }
-        defer(tryCatchDeferred(deferred, onRejected, this.reasons));
-        return deferred.promise;
-    };
-
-    function PendingPromise() {
-        this.queue = [];
-    }
-    PendingPromise.prototype.resolve = function(deferred, onFulfilled, onRejected) {
-        this.queue.push({
-            deferred: deferred,
-            onFulfilled: onFulfilled,
-            onRejected: onRejected
-        });
-        return deferred.promise;
-    };
-    PendingPromise.prototype.resolveQueued = function(promise) {
-        var queue = this.queue;
-        for (var i = 0, l = queue.length; i < l; i++) {
+        for (var i = 0; i < queue.length; i++) {
             var next = queue[i];
-            promise.resolve(next.deferred, next.onFulfilled, next.onRejected);
+            promise._state(
+                value,
+                next.onFulfilled,
+                next.onRejected,
+                next.deferred
+            );
         }
-    };
+    }
+    function adopter(promise, state) {
+        return function(value) {
+            return adopt(promise, state, value);
+        };
+    }
 
     function noop() {}
     function isFunction(fn) {
         return typeof fn === 'function';
     }
     function isObject(obj) {
-        return obj && (typeof obj === 'object' || typeof obj === 'function');
+        return obj === Object(obj);
     }
-    function apply(fn, args) {
-        return (args.length > 1) ? fn.apply(void 0, args) : fn(args[0]);
+    function instanceOf(instance, Class) {
+        return isObject(instance) && instance instanceof Class && instance.constructor === Class;
     }
-    function toArray() {
-        var l = arguments.length;
-        var array = new Array(l);
-        for (var i = 0; i < l; i++) {
-            array[i] = arguments[i];
-        }
-        return array;
-    }
-    function fillSlot(array, index, fn) {
-        return function(value) {
-            array[index] = value;
-            fn();
-        };
-    }
-    function tryCatchResolver(resolver, resolve, reject) {
-        try {
-            resolver(resolve, reject);
-        } catch (e) {
-            reject(e);
+    function each(collection, iterator) {
+        for (var i = 0; i < collection.length; i++) {
+            iterator(collection[i], i);
         }
     }
-    function tryCatchDeferred(deferred, fn, args) {
+    function tryCatchDeferred(deferred, fn, arg) {
+        var promise = deferred.promise;
+        var resolve = deferred.resolve;
+        var reject = deferred.reject;
         return function() {
             try {
-                var result = apply(fn, args);
-                if (deferred.resolve === fn || deferred.reject === fn) { return; }
-                doResolve.call(deferred, result);
+                var result = fn(arg);
+                if (resolve === fn || reject === fn) {
+                    return;
+                }
+                doResolve(promise, resolve, reject, result, result);
             } catch (e) {
-                deferred.reject(e);
+                reject(e);
             }
         };
     }
 
-    var nextTick = typeof process !== 'undefined' && isFunction(process.nextTick) ? process.nextTick
-     : typeof setImmediate !== 'undefined' ? setImmediate
-     : function(fn) { setTimeout(fn, 0); };
+    var nextTick = typeof setImmediate !== 'undefined' ? setImmediate
+      : function(fn) { setTimeout(fn, 0); };
+
     var defer = (function() {
-        var queue = new Array(100);
-        var l = 0;
+        var queue = new Array(16);
+        var length = 0;
+
         function flush() {
-            for (var i = 0; i < l; i++) {
-                queue[i]();
+            for (var i = 0; i < length; i++) {
+                var fn = queue[i];
                 queue[i] = null;
+                fn();
             }
-            l = 0;
+            length = 0;
         }
+
         return function defer(fn) {
-            queue[l] = fn;
-            if (++l === 1) { nextTick(flush); }
+            if (length === 0) { nextTick(flush); }
+            queue[length++] = fn;
         };
     })();
 
-    function doResolve(x) {
-        var deferred = this;
-        var _reject = deferred.reject;
-        var then;
+    function doResolve(promise, resolve, reject, value, context) {
+        var _reject = reject;
+        var then, _resolve;
         try {
-            if (x === deferred.promise) {
-                throw new TypeError('A promise cannot be fulfilled with itself');
+            if (value === promise) {
+                throw new TypeError('Cannot fulfill promise with itself');
             }
-            if (isObject(x) && (then = x.then) && isFunction(then)) {
-                var _resolve = function() {
+            var isObj = isObject(value);
+            if (isObj && value instanceof promise.constructor) {
+                adopt(promise, value._state, value._value);
+            } else if (isObj && (then = value.then) && isFunction(then)) {
+                _resolve = function(value) {
                     _resolve = _reject = noop;
-                    doResolve.apply(deferred, arguments);
+                    doResolve(promise, resolve, reject, value, value);
                 };
-                _reject = function() {
+                _reject = function(reason) {
                     _resolve = _reject = noop;
-                    apply(deferred.reject, arguments);
+                    reject(reason);
                 };
                 then.call(
-                    x,
-                    function() { apply(_resolve, arguments); },
-                    function() { apply(_reject, arguments); }
+                    context,
+                    function(value) { _resolve(value); },
+                    function(reason) { _reject(reason); }
                 );
             } else {
-                apply(deferred.resolve, arguments);
+                resolve(value);
             }
         } catch (e) {
             _reject(e);
