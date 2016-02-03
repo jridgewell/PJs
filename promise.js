@@ -20,7 +20,7 @@
             this,
             adopter(this, FulfilledPromise),
             adopter(this, RejectedPromise),
-            { then: resolver }
+            [{ then: resolver }]
         );
     }
 
@@ -64,8 +64,9 @@
             return /** @type {!Promise} */(value);
         }
 
+        var values = toArray.apply(void 0, arguments);
         return new this(function(resolve) {
-            resolve(value);
+            apply(resolve, values);
         });
     };
 
@@ -74,8 +75,9 @@
      * @returns {!Promise}
      */
     Promise.reject = function(reason) {
+        var reasons = toArray.apply(void 0, arguments);
         return new this(function(_, reject) {
-            reject(reason);
+            apply(reject, reasons);
         });
     };
 
@@ -178,7 +180,8 @@
     }
     function adopter(promise, state) {
         return function(value) {
-            return adopt(promise, state, value);
+            var values = toArray.apply(void 0, arguments);
+            return adopt(promise, state, values);
         };
     }
 
@@ -194,17 +197,29 @@
             iterator(collection[i], i);
         }
     }
-    function tryCatchDeferred(deferred, fn, arg) {
+    function apply(fn, args) {
+        return args.length > 1 ? fn.apply(void 0, args)
+            : args.length === 1 ? fn(args[0])
+            : fn();
+    }
+    function toArray() {
+        var array = new Array(arguments.length);
+        for (var i = 0; i < arguments.length; i++) {
+            array[i] = arguments[i];
+        }
+        return array;
+    }
+    function tryCatchDeferred(deferred, fn, args) {
         var promise = deferred.promise;
         var resolve = deferred.resolve;
         var reject = deferred.reject;
         return function() {
             try {
-                var result = fn(arg);
+                var result = apply(fn, args);
                 if (resolve === fn || reject === fn) {
                     return;
                 }
-                doResolve(promise, resolve, reject, result, result);
+                doResolve(promise, resolve, reject, [result], result);
             } catch (e) {
                 reject(e);
             }
@@ -233,7 +248,8 @@
         };
     })();
 
-    function doResolve(promise, resolve, reject, value, context) {
+    function doResolve(promise, resolve, reject, values, context) {
+        var value = values.length > 0 ? values[0] : void 0;
         var _reject = reject;
         var then, _resolve;
         try {
@@ -246,19 +262,20 @@
             } else if (isObj && (then = value.then) && isFunction(then)) {
                 _resolve = function(value) {
                     _resolve = _reject = noop;
-                    doResolve(promise, resolve, reject, value, value);
+                    var values = toArray.apply(void 0, arguments);
+                    doResolve(promise, resolve, reject, values, value);
                 };
-                _reject = function(reason) {
+                _reject = function() {
                     _resolve = _reject = noop;
-                    reject(reason);
+                    reject.apply(void 0, arguments);
                 };
                 then.call(
                     context,
-                    function(value) { _resolve(value); },
-                    function(reason) { _reject(reason); }
+                    function(value) { _resolve.apply(void 0, arguments); },
+                    function(reason) { _reject.apply(void 0, arguments); }
                 );
             } else {
-                resolve(value);
+                apply(resolve, values);
             }
         } catch (e) {
             _reject(e);
