@@ -111,7 +111,7 @@
     Promise.race = function(promises) {
         var Constructor = this;
         return new Constructor(function(resolve, reject) {
-            for (var i = 0, l = promises.length; i < l; i++) {
+            for (var i = 0; i < promises.length; i++) {
                 Constructor.resolve(promises[i]).then(resolve, reject);
             }
         });
@@ -188,9 +188,6 @@
     }
     function isObject(obj) {
         return obj === Object(obj);
-    }
-    function instanceOf(instance, Class) {
-        return isObject(instance) && instance instanceof Class && instance.constructor === Class;
     }
     function each(collection, iterator) {
         for (var i = 0; i < collection.length; i++) {
