@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Constructs a ES6/Promises A+ Promise instance.
  *
@@ -88,13 +86,13 @@ Promise.prototype.catch = function(onRejected) {
  * @returns {!Promise}
  */
 Promise.resolve = function(value) {
-  var Constructor = this;
-  var promise;
+  const Constructor = this;
+  let promise;
 
   if (isObject(value) && value instanceof this) {
     promise = value;
   } else {
-    promise = new Constructor(function(resolve) {
+    promise = new Constructor((resolve) => {
       resolve(value);
     });
   }
@@ -109,8 +107,8 @@ Promise.resolve = function(value) {
  * @returns {!Promise}
  */
 Promise.reject = function(reason) {
-  var Constructor = this;
-  var promise = new Constructor(function(_, reject) {
+  const Constructor = this;
+  const promise = new Constructor((_, reject) => {
     reject(reason);
   });
 
@@ -126,17 +124,17 @@ Promise.reject = function(reason) {
  * @returns {!Promise}
  */
 Promise.all = function(promises) {
-  var Constructor = this;
-  var promise = new Constructor(function(resolve, reject) {
-    var length = promises.length;
-    var values = new Array(length);
+  const Constructor = this;
+  const promise = new Constructor(function(resolve, reject) {
+    let length = promises.length;
+    const values = new Array(length);
 
     if (length === 0) {
       return resolve(values);
     }
 
-    each(promises, function(promise, index) {
-      Constructor.resolve(promise).then(function(value) {
+    each(promises,(promise, index) => {
+      Constructor.resolve(promise).then((value) => {
         values[index] = value;
         if (--length === 0) {
           resolve(values);
@@ -156,9 +154,9 @@ Promise.all = function(promises) {
  * @returns {!Promise}
  */
 Promise.race = function(promises) {
-  var Constructor = this;
-  var promise = new Constructor(function(resolve, reject) {
-    for (var i = 0, l = promises.length; i < l; i++) {
+  const Constructor = this;
+  const promise = new Constructor(function(resolve, reject) {
+    for (let i = 0, l = promises.length; i < l; i++) {
       Constructor.resolve(promises[i]).then(resolve, reject);
     }
   });
@@ -269,7 +267,7 @@ function PendingPromise(queue, onFulfilled, onRejected, deferred) {
  * @constructor
  */
 function Deferred(Promise) {
-  var deferred = this;
+  const deferred = this;
   /** @type {!Promise} */
   this.promise = new Promise(function(resolve, reject) {
     /** @type {function(*=)} */
@@ -290,12 +288,12 @@ function Deferred(Promise) {
  * @param {*=} value
  */
 function adopt(promise, state, value) {
-  var queue = promise._value;
+  const queue = promise._value;
   promise._state = state;
   promise._value = value;
 
-  for (var i = 0; i < queue.length; i++) {
-    var next = queue[i];
+  for (let i = 0; i < queue.length; i++) {
+    const next = queue[i];
     promise._state(
       value,
       next.onFulfilled,
@@ -359,7 +357,7 @@ function isObject(obj) {
  * @param {function(*=,number)} iterator
  */
 function each(collection, iterator) {
-  for (var i = 0; i < collection.length; i++) {
+  for (let i = 0; i < collection.length; i++) {
     iterator(collection[i], i);
   }
 }
@@ -374,12 +372,12 @@ function each(collection, iterator) {
  * @returns {function()}
  */
 function tryCatchDeferred(deferred, fn, arg) {
-  var promise = deferred.promise;
-  var resolve = deferred.resolve;
-  var reject = deferred.reject;
+  const promise = deferred.promise;
+  const resolve = deferred.resolve;
+  const reject = deferred.reject;
   return function() {
     try {
-      var result = fn(arg);
+      const result = fn(arg);
       if (resolve === fn || reject === fn) {
         return;
       }
@@ -393,36 +391,28 @@ function tryCatchDeferred(deferred, fn, arg) {
 /**
  * Queues and executes multiple deferred functions on another run loop.
  */
-var defer = (function() {
+const defer = (function() {
   /**
    * Defers fn to another run loop.
    */
-  var scheduleFlush;
+  let scheduleFlush;
   if (typeof process !== 'undefined' && isFunction(process.nextTick)) {
-    scheduleFlush = function() {
-      process.nextTick(flush);
-    };
+    scheduleFlush = () => { process.nextTick(flush); };
   } else if (typeof setImmediate !== 'undefined') {
-    scheduleFlush = function() {
-      setImmediate(flush);
-    };
-  } else if (typeof window !== 'undefined' && window.postMessage) {
+    scheduleFlush = () => { setImmediate(flush); };
+  } else if (typeof window !== 'undefined' && isFunction(window.postMessage)) {
     window.addEventListener('message', flush);
-    scheduleFlush = function() {
-      window.postMessage('macro-task', '*');
-    };
+    scheduleFlush = () => { window.postMessage('macro-task', '*'); };
   } else {
-    scheduleFlush = function() {
-      setTimeout(flush, 0);
-    };
+    scheduleFlush = () => { setTimeout(flush, 0); };
   }
 
-  var queue = new Array(16);
-  var length = 0;
+  const queue = new Array(16);
+  let length = 0;
 
   function flush() {
-    for (var i = 0; i < length; i++) {
-      var fn = queue[i];
+    for (let i = 0; i < length; i++) {
+      const fn = queue[i];
       queue[i] = null;
       fn();
     }
@@ -449,14 +439,14 @@ var defer = (function() {
  * @param {*=} context
  */
 function doResolve(promise, resolve, reject, value, context) {
-  var _reject = reject;
-  var then;
-  var _resolve;
+  let _reject = reject;
+  let then;
+  let _resolve;
   try {
     if (value === promise) {
       throw new TypeError('Cannot fulfill promise with itself');
     }
-    var isObj = isObject(value);
+    const isObj = isObject(value);
     if (isObj && value instanceof promise.constructor) {
       adopt(promise, value._state, value._value);
     } else if (isObj && (then = value.then) && isFunction(then)) {
@@ -481,5 +471,4 @@ function doResolve(promise, resolve, reject, value, context) {
   }
 }
 
-Promise.default = Promise.Promise = Promise;
-module.exports = Promise;
+export default Promise;
