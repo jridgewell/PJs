@@ -1,5 +1,7 @@
 'use strict';
 var Promise = require('../');
+Promise._onPossiblyUnhandledRejection = function() {};
+
 module.exports = {
     resolved: function(value) {
         return Promise.resolve(value);

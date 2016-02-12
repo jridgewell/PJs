@@ -6,6 +6,8 @@ var expect = chai.expect;
 
 chai.use(require('sinon-chai'));
 
+Promise._onPossiblyUnhandledRejection = function() {};
+
 describe('PJs', function() {
 
     describe('constructor', function() {
