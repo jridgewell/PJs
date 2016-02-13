@@ -481,5 +481,5 @@ function doResolve(promise, resolve, reject, value, context) {
   }
 }
 
+Promise.default = Promise.Promise = Promise;
 module.exports = Promise;
-Promise.default = Promise;
