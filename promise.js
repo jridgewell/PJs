@@ -398,15 +398,7 @@ var defer = (function() {
    * Defers fn to another run loop.
    */
   var scheduleFlush;
-  if (typeof process !== 'undefined' && isFunction(process.nextTick)) {
-    scheduleFlush = function() {
-      process.nextTick(flush);
-    };
-  } else if (typeof setImmediate !== 'undefined') {
-    scheduleFlush = function() {
-      setImmediate(flush);
-    };
-  } else if (typeof window !== 'undefined' && window.postMessage) {
+  if (typeof window !== 'undefined' && window.postMessage) {
     window.addEventListener('message', flush);
     scheduleFlush = function() {
       window.postMessage('macro-task', '*');
