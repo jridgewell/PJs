@@ -1,14 +1,18 @@
 "use strict";
-var Promise = require('..');
+var Promise = require('../');
 var chai = require('chai');
 var sinon = require('sinon');
 var expect = chai.expect;
 
 chai.use(require('sinon-chai'));
 
-Promise._onPossiblyUnhandledRejection = function() {};
-
 describe('PJs', function() {
+    var _onPossiblyUnhandledRejection = Promise._onPossiblyUnhandledRejection;
+    var noop = function() {};
+
+    beforeEach(function() {
+        Promise._onPossiblyUnhandledRejection = noop;
+    });
 
     describe('constructor', function() {
         it('returns an instance of the Promise class', function() {
@@ -68,6 +72,49 @@ describe('PJs', function() {
 
             return promise.then(function(value){
                 expect(value).to.equal(iterations * (iterations + 1) / 2);
+            });
+        });
+    });
+
+    describe('._onPossiblyUnhandledRejection', function() {
+        beforeEach(function() {
+            Promise._onPossiblyUnhandledRejection = _onPossiblyUnhandledRejection;
+        });
+
+        it('throws the rejection reason', function() {
+            expect(function() {
+                Promise._onPossiblyUnhandledRejection('what reason?');
+            }).to.throw('what reason');
+        });
+
+        it('is called when a rejected promise does not have a onRejected', function() {
+            return new Promise(function(resolve) {
+                Promise._onPossiblyUnhandledRejection = resolve;
+                Promise.reject();
+            });
+        });
+
+        it('is not called when a rejected promise already has a onRejected', function() {
+            var rejectP;
+            var p = new Promise(function(_, reject) {
+                rejectP = reject;
+            });
+
+            p.catch(function() {});
+
+            return new Promise(function(resolve, reject) {
+                Promise._onPossiblyUnhandledRejection = reject;
+                setTimeout(resolve, 100);
+                rejectP();
+            });
+        });
+
+        it('is not called when a rejected promise gets a onRejected', function() {
+            var p = Promise.reject();
+            return new Promise(function(resolve, reject) {
+                Promise._onPossiblyUnhandledRejection = reject;
+                setTimeout(resolve, 100);
+                p.catch(function() {});
             });
         });
     });
@@ -348,7 +395,11 @@ describe('PJs', function() {
 
     describe('#catch', function() {
         describe('when promise is fulfilled', function() {
-            var p = Promise.resolve();
+            var p;
+            beforeEach(function() {
+                p = Promise.resolve();
+            });
+
             it('is not called', function() {
                 var spy = sinon.spy();
                 return p.catch(spy).then(function() {
@@ -358,7 +409,11 @@ describe('PJs', function() {
         });
 
         describe('when promise is rejected', function() {
-            var p = Promise.reject();
+            var p;
+            beforeEach(function() {
+                p = Promise.reject();
+            });
+
             it('is called', function() {
                 var spy = sinon.spy();
                 return p.catch(spy).then(function() {

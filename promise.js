@@ -170,7 +170,7 @@ Promise.race = function(promises) {
  * An internal use static function.
  */
 Promise._onPossiblyUnhandledRejection = function(reason, promise) {
-  throw new Error('Unhandled Promise Rejection: ' + value);
+  throw new Error('Unhandled Promise Rejection: ' + reason);
 };
 
 /****************************
@@ -308,7 +308,7 @@ function adopt(promise, state, value) {
   if (state === RejectedPromise && !promise._handledRejection) {
     setTimeout(function() {
       if (!promise._handledRejection) {
-        Promise._onPossiblyUnhandledRejection(value, promise);
+        promise.constructor._onPossiblyUnhandledRejection(value, promise);
       }
     }, 0);
   }

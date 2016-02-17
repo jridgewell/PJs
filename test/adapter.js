@@ -1,17 +1,28 @@
 'use strict';
 var Promise = require('../');
-Promise._onPossiblyUnhandledRejection = function() {};
+
+var Adaptor = function() {
+    Promise.apply(this, arguments);
+};
+
+Adaptor.prototype = Object.create(Promise.prototype, { constructor: { value: Adaptor } });
+for (var prop in Promise) {
+    if (Promise.hasOwnProperty(prop)) {
+        Adaptor[prop] = Promise[prop];
+    }
+}
+Adaptor._onPossiblyUnhandledRejection = function() {};
 
 module.exports = {
     resolved: function(value) {
-        return Promise.resolve(value);
+        return Adaptor.resolve(value);
     },
     rejected: function(reason) {
-        return Promise.reject(reason);
+        return Adaptor.reject(reason);
     },
     deferred: function() {
         var deferred = {};
-        deferred.promise = new Promise(function(resolve, reject) {
+        deferred.promise = new Adaptor(function(resolve, reject) {
             deferred.resolve = resolve;
             deferred.reject = reject;
         });
