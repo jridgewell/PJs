@@ -170,7 +170,7 @@ Promise.race = function(promises) {
  * An internal use static function.
  */
 Promise._onPossiblyUnhandledRejection = function(reason, promise) {
-  throw new Error('Unhandled Promise Rejection: ' + reason);
+  throw reason;
 };
 
 /****************************
