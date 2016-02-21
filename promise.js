@@ -30,7 +30,7 @@ function Promise(resolver) {
    * @type {boolean}
    * @private
    */
-  this._handledRejection = false;
+  this._isChainEnd = true;
 
   doResolve(
     this,
@@ -55,8 +55,8 @@ Promise.prototype.then = function(onFulfilled, onRejected) {
   onFulfilled = isFunction(onFulfilled) ? onFulfilled : void 0;
   onRejected = isFunction(onRejected) ? onRejected : void 0;
 
-  if (onRejected) {
-    this._handledRejection = true;
+  if (onFulfilled || onRejected) {
+    this._isChainEnd = false;
   }
 
   return this._state(
@@ -305,9 +305,9 @@ function adopt(promise, state, value) {
   }
 
   // Determine if this rejected promise will be "handled".
-  if (state === RejectedPromise && !promise._handledRejection) {
+  if (state === RejectedPromise && promise._isChainEnd) {
     setTimeout(function() {
-      if (!promise._handledRejection) {
+      if (promise._isChainEnd) {
         promise.constructor._onPossiblyUnhandledRejection(value, promise);
       }
     }, 0);

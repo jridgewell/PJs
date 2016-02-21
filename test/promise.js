@@ -96,11 +96,9 @@ describe('PJs', function() {
 
         it('is not called when a rejected promise already has a onRejected', function() {
             var rejectP;
-            var p = new Promise(function(_, reject) {
+            new Promise(function(_, reject) {
                 rejectP = reject;
-            });
-
-            p.catch(function() {});
+            }).catch(function() {});
 
             return new Promise(function(resolve, reject) {
                 Promise._onPossiblyUnhandledRejection = reject;
@@ -115,6 +113,66 @@ describe('PJs', function() {
                 Promise._onPossiblyUnhandledRejection = reject;
                 setTimeout(resolve, 100);
                 p.catch(function() {});
+            });
+        });
+
+        describe('when a rejected promise is adopted', function() {
+            it('is called regardless of promise chain', function() {
+                var resolveP;
+                new Promise(function(resolve) {
+                    resolveP = resolve;
+                }).then(function() {
+                    return Promise.reject(1);
+                }).catch(function() {});
+
+                return new Promise(function(resolve, reject) {
+                    Promise._onPossiblyUnhandledRejection = resolve;
+                    resolveP();
+                });
+            });
+        });
+
+        describe('when rejection happens in the middle of a chain', function() {
+            it('is called when the end promise does not have a onRejected', function() {
+                return new Promise(function(resolve) {
+                    Promise._onPossiblyUnhandledRejection = resolve;
+                    Promise.resolve().then(function() {
+                        throw 1;
+                    }).then(function() {
+                        return 2;
+                    });
+                });
+            });
+
+            it('is not called when the end promise already has a onRejected', function() {
+                var resolveP;
+                new Promise(function(resolve) {
+                    resolveP = resolve;
+                }).then(function() {
+                    throw 1;
+                }).then(function() {
+                    return 2;
+                }).catch(function() {});
+
+                return new Promise(function(resolve, reject) {
+                    Promise._onPossiblyUnhandledRejection = reject;
+                    setTimeout(resolve, 100);
+                    resolveP();
+                });
+            });
+
+            it('is not called when the end promise gets a onRejected', function() {
+                var p = Promise.resolve(1).then(function() {
+                    throw 1;
+                }).then(function() {
+                    return 2;
+                });
+
+                return new Promise(function(resolve, reject) {
+                    Promise._onPossiblyUnhandledRejection = reject;
+                    setTimeout(resolve, 100);
+                    p.catch(function() {});
+                });
             });
         });
     });
