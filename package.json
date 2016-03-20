@@ -1,8 +1,9 @@
 {
   "name": "promise-pjs",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "A tiny Promises A/+ implementation",
   "main": "promise.js",
+  "repository": "https://github.com/jridgewell/PJs",
   "scripts": {
     "test": "grunt test",
     "lint": "grunt jshint"
