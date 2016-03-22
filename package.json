@@ -1,6 +1,6 @@
 {
   "name": "promise-pjs",
-  "version": "0.2.6",
+  "version": "0.2.5",
   "description": "A tiny Promises A/+ implementation",
   "main": "promise.js",
   "repository": "https://github.com/jridgewell/PJs",
