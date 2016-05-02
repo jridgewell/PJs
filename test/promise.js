@@ -1,5 +1,5 @@
-"use strict";
-var Promise = require('../');
+var Promise = require('./adapter');
+
 var chai = require('chai');
 var sinon = require('sinon');
 var expect = chai.expect;
@@ -7,11 +7,10 @@ var expect = chai.expect;
 chai.use(require('sinon-chai'));
 
 describe('PJs', function() {
-    var _onPossiblyUnhandledRejection = Promise._onPossiblyUnhandledRejection;
     var noop = function() {};
 
     beforeEach(function() {
-        Promise._onPossiblyUnhandledRejection = noop;
+        Promise._overrideUnhandledExceptionHandler(noop);
     });
 
     describe('constructor', function() {
@@ -76,20 +75,15 @@ describe('PJs', function() {
         });
     });
 
-    describe('._onPossiblyUnhandledRejection', function() {
+    describe('._overrideUnhandledExceptionHandler', function() {
+        var Promise;
         beforeEach(function() {
-            Promise._onPossiblyUnhandledRejection = _onPossiblyUnhandledRejection;
-        });
-
-        it('throws the rejection reason', function() {
-            expect(function() {
-                Promise._onPossiblyUnhandledRejection('what reason?');
-            }).to.throw('what reason');
+            Promise = require('./adapter');
         });
 
         it('is called when a rejected promise does not have a onRejected', function() {
             return new Promise(function(resolve) {
-                Promise._onPossiblyUnhandledRejection = resolve;
+                Promise._overrideUnhandledExceptionHandler(resolve);
                 Promise.reject();
             });
         });
@@ -101,7 +95,7 @@ describe('PJs', function() {
             }).catch(function() {});
 
             return new Promise(function(resolve, reject) {
-                Promise._onPossiblyUnhandledRejection = reject;
+                Promise._overrideUnhandledExceptionHandler(reject);
                 setTimeout(resolve, 100);
                 rejectP();
             });
@@ -110,7 +104,7 @@ describe('PJs', function() {
         it('is not called when a rejected promise gets a onRejected', function() {
             var p = Promise.reject();
             return new Promise(function(resolve, reject) {
-                Promise._onPossiblyUnhandledRejection = reject;
+                Promise._overrideUnhandledExceptionHandler(reject);
                 setTimeout(resolve, 100);
                 p.catch(function() {});
             });
@@ -126,7 +120,7 @@ describe('PJs', function() {
                 }).catch(function() {});
 
                 return new Promise(function(resolve, reject) {
-                    Promise._onPossiblyUnhandledRejection = resolve;
+                    Promise._overrideUnhandledExceptionHandler(resolve);
                     resolveP();
                 });
             });
@@ -135,7 +129,7 @@ describe('PJs', function() {
         describe('when rejection happens in the middle of a chain', function() {
             it('is called when the end promise does not have a onRejected', function() {
                 return new Promise(function(resolve) {
-                    Promise._onPossiblyUnhandledRejection = resolve;
+                    Promise._overrideUnhandledExceptionHandler(resolve);
                     Promise.resolve().then(function() {
                         throw 1;
                     }).then(function() {
@@ -155,7 +149,7 @@ describe('PJs', function() {
                 }).catch(function() {});
 
                 return new Promise(function(resolve, reject) {
-                    Promise._onPossiblyUnhandledRejection = reject;
+                    Promise._overrideUnhandledExceptionHandler(reject);
                     setTimeout(resolve, 100);
                     resolveP();
                 });
@@ -169,7 +163,7 @@ describe('PJs', function() {
                 });
 
                 return new Promise(function(resolve, reject) {
-                    Promise._onPossiblyUnhandledRejection = reject;
+                    Promise._overrideUnhandledExceptionHandler(reject);
                     setTimeout(resolve, 100);
                     p.catch(function() {});
                 });

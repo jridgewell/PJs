@@ -178,8 +178,8 @@
   /**
    * An internal use static function.
    */
-  Promise._onPossiblyUnhandledRejection = function(reason, promise) {
-    throw reason;
+  Promise._overrideUnhandledExceptionHandler = function(handler) {
+    onPossiblyUnhandledRejection = handler;
   };
 
   /****************************
@@ -317,7 +317,7 @@
     if (state === RejectedPromise && promise._isChainEnd) {
       setTimeout(function() {
         if (promise._isChainEnd) {
-          promise.constructor._onPossiblyUnhandledRejection(value, promise);
+          onPossiblyUnhandledRejection(value, promise);
         }
       }, 0);
     }
@@ -359,6 +359,10 @@
   function isObject(obj) {
     return obj === Object(obj);
   }
+
+  var onPossiblyUnhandledRejection = function(reason, promise) {
+    throw reason;
+  };
 
   /**
    * Iterates over each element of an array, calling the iterator with the

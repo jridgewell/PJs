@@ -1,4 +1,3 @@
-'use strict';
 var Promise = require('../');
 
 var Adaptor = function() {
@@ -11,21 +10,6 @@ for (var prop in Promise) {
         Adaptor[prop] = Promise[prop];
     }
 }
-Adaptor._onPossiblyUnhandledRejection = function() {};
+Adaptor._overrideUnhandledExceptionHandler(function() {});
 
-module.exports = {
-    resolved: function(value) {
-        return Adaptor.resolve(value);
-    },
-    rejected: function(reason) {
-        return Adaptor.reject(reason);
-    },
-    deferred: function() {
-        var deferred = {};
-        deferred.promise = new Adaptor(function(resolve, reject) {
-            deferred.resolve = resolve;
-            deferred.reject = reject;
-        });
-        return deferred;
-    }
-};
+module.exports = Adaptor;
