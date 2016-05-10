@@ -84,6 +84,7 @@ Promise.prototype.catch = function(onRejected) {
  * Creates a fulfilled Promise of value. If value is itself a then-able,
  * resolves with the then-able's value.
  *
+ * @this {!Promise}
  * @param {*=} value
  * @returns {!Promise}
  */
@@ -105,6 +106,7 @@ Promise.resolve = function(value) {
 /**
  * Creates a rejected Promise of reason.
  *
+ * @this {!Promise}
  * @param {*=} reason
  * @returns {!Promise}
  */
@@ -122,6 +124,7 @@ Promise.reject = function(reason) {
  * passed in promises. If any promise rejects, the returned promise will
  * reject.
  *
+ * @this {!Promise}
  * @param {!Array<Promise|*>} promises
  * @returns {!Promise}
  */
@@ -152,6 +155,7 @@ Promise.all = function(promises) {
  * Creates a Promise that will resolve or reject based on the first
  * resolved or rejected promise.
  *
+ * @this {!Promise}
  * @param {!Array<Promise|*>} promises
  * @returns {!Promise}
  */
@@ -428,10 +432,12 @@ var defer = (function() {
   /**
    * @param {function()} fn
    */
-  return function defer(fn) {
+  function defer(fn) {
     if (length === 0) { scheduleFlush(); }
     queue[length++] = fn;
   };
+
+  return defer;
 })();
 
 /**
