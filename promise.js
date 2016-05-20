@@ -204,7 +204,7 @@ function FulfilledPromise(value, onFulfilled, unused, deferred) {
   if (!deferred) {
     deferred = new Deferred(this.constructor);
   }
-  defer(tryCatchDeferred(deferred, onFulfilled, value));
+  defer(deferred, onFulfilled, value);
   return deferred.promise;
 }
 
@@ -231,7 +231,7 @@ function RejectedPromise(reason, unused, onRejected, deferred) {
   if (!deferred) {
     deferred = new Deferred(this.constructor);
   }
-  defer(tryCatchDeferred(deferred, onRejected, reason));
+  defer(deferred, onRejected, reason);
   return deferred.promise;
 }
 
@@ -373,29 +373,25 @@ function each(collection, iterator) {
 }
 
 /**
- * Creates a function that will attempt to resolve the deferred with the return
- * of fn. If any error is raised, rejects instead.
+ * Invokes the next link in the promise chain, resolving or rejecting the
+ * deferred promise with the result.
  *
  * @param {!Deferred} deferred
  * @param {function(*=)} fn
  * @param {*} arg
- * @returns {function()}
  */
 function tryCatchDeferred(deferred, fn, arg) {
-  var promise = deferred.promise;
   var resolve = deferred.resolve;
   var reject = deferred.reject;
-  return function() {
-    try {
-      var result = fn(arg);
-      if (resolve === fn || reject === fn) {
-        return;
-      }
-      doResolve(promise, resolve, reject, result, result);
-    } catch (e) {
-      reject(e);
+  try {
+    var result = fn(arg);
+    if (resolve === fn || reject === fn) {
+      return;
     }
-  };
+    doResolve(deferred.promise, resolve, reject, result, result);
+  } catch (e) {
+    reject(e);
+  }
 }
 
 /**
@@ -422,19 +418,25 @@ var defer = (function() {
 
   function flush() {
     for (var i = 0; i < length; i++) {
-      var fn = queue[i];
+      var q = queue[i];
       queue[i] = null;
-      fn();
+      tryCatchDeferred(q.deferred, q.fn, q.arg);
     }
     length = 0;
   }
 
   /**
-   * @param {function()} fn
+   * @param {!Deferred} deferred
+   * @param {function(*=)} fn
+   * @param {*} arg
    */
-  function defer(fn) {
+  function defer(deferred, fn, arg) {
     if (length === 0) { scheduleFlush(); }
-    queue[length++] = fn;
+    queue[length++] = {
+      deferred: deferred,
+      fn: fn,
+      arg: arg
+    };
   };
 
   return defer;
