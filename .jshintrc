@@ -10,18 +10,19 @@
     "globals": {
         "describe": true,
         "it": true,
-        "expect": true
+        "expect": true,
+        "beforeEach": true
     },
     "immed": true,
     "indent": 4,
     "jquery": true,
-    "latedef": true,
+    "latedef": false,
     "newcap": true,
     "noarg": true,
     "node": true,
     "proto": true,
     "strict": true,
     "undef": true,
-    "unused": true,
+    "unused": "vars",
     "validthis": true
 }

@@ -1,3 +1,5 @@
+"use strict";
+
 var tests = require('promises-aplus-tests');
 var Adaptor = require('./adapter');
 

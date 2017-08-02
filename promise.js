@@ -170,6 +170,10 @@ Promise.race = function(promises) {
   return /** @type {!Promise} */(promise);
 };
 
+var onPossiblyUnhandledRejection = function(reason, promise) {
+  throw reason;
+};
+
 /**
  * An internal use static function.
  */
@@ -387,10 +391,6 @@ function isObject(obj) {
   return obj === Object(obj);
 }
 
-var onPossiblyUnhandledRejection = function(reason, promise) {
-  throw reason;
-}
-
 /**
  * Iterates over each element of an array, calling the iterator with the
  * element and its index.
@@ -464,7 +464,7 @@ var defer = (function() {
   function defer(fn) {
     if (length === 0) { scheduleFlush(); }
     queue[length++] = fn;
-  };
+  }
 
   return defer;
 })();

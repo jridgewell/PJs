@@ -1,3 +1,5 @@
+"use strict";
+
 var Promise = require('./adapter');
 
 var chai = require('chai');
@@ -179,8 +181,9 @@ describe('PJs', function() {
 
         describe('when subclassed', function() {
             function SubClass() {}
-            SubClass.prototype = Object.create(Promise.prototype);
-            SubClass.prototype.constructor = SubClass;
+            SubClass.prototype = Object.create(Promise.prototype, {
+              constructor: { value: SubClass }
+            });
             SubClass.resolve = Promise.resolve;
 
             it('returns promise if promise is an instanceof SubClass', function() {
@@ -513,9 +516,10 @@ describe('PJs', function() {
           resolve(p0);
         });
 
-        var p2 = p0.then(function(value) {
+        var p2 = p1.then(function(value) {
           expect(value).to.equal(1);
         });
+
         return p2;
       });
 
