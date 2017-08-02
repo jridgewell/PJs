@@ -15,7 +15,7 @@ function Promise(resolver) {
   }
 
   /**
-   * @param {function(this:Promise,*=,function(*=),function(*=),Deferred):!Promise} state
+   * @type {function(this:Promise,*=,function(*=),function(*=),Deferred):!Promise}
    * @private
    */
   this._state = PendingPromise;
@@ -162,7 +162,7 @@ Promise.all = function(promises) {
 Promise.race = function(promises) {
   var Constructor = this;
   var promise = new Constructor(function(resolve, reject) {
-    for (var i = 0, l = promises.length; i < l; i++) {
+    for (var i = 0; i < promises.length; i++) {
       Constructor.resolve(promises[i]).then(resolve, reject);
     }
   });
@@ -200,7 +200,10 @@ Promise._overrideUnhandledExceptionHandler = function(handler) {
  * @returns {!Promise}
  */
 function FulfilledPromise(value, onFulfilled, unused, deferred) {
-  if (!onFulfilled) { return this; }
+  if (!onFulfilled) {
+    deferredAdopt(deferred, FulfilledPromise, value);
+    return this;
+  }
   if (!deferred) {
     deferred = new Deferred(this.constructor);
   }
@@ -227,7 +230,10 @@ function FulfilledPromise(value, onFulfilled, unused, deferred) {
  * @returns {!Promise}
  */
 function RejectedPromise(reason, unused, onRejected, deferred) {
-  if (!onRejected) { return this; }
+  if (!onRejected) {
+    deferredAdopt(deferred, RejectedPromise, reason);
+    return this;
+  }
   if (!deferred) {
     deferred = new Deferred(this.constructor);
   }
@@ -254,8 +260,8 @@ function RejectedPromise(reason, unused, onRejected, deferred) {
  * @returns {!Promise}
  */
 function PendingPromise(queue, onFulfilled, onRejected, deferred) {
-  if (!onFulfilled && !onRejected) { return this; }
   if (!deferred) {
+    if (!onFulfilled && !onRejected) { return this; }
     deferred = new Deferred(this.constructor);
   }
   queue.push({
@@ -293,10 +299,18 @@ function Deferred(Promise) {
  * @param {function(this:Promise,*=,function(*=),function(*=),Deferred):!Promise} state
  * @param {*=} value
  */
-function adopt(promise, state, value) {
+function adopt(promise, state, value, adoptee) {
   var queue = promise._value;
   promise._state = state;
   promise._value = value;
+
+  if (adoptee && state === PendingPromise) {
+    adoptee._state(value, void 0, void 0, {
+      promise: promise,
+      resolve: void 0,
+      reject: void 0
+    });
+  }
 
   for (var i = 0; i < queue.length; i++) {
     var next = queue[i];
@@ -307,6 +321,7 @@ function adopt(promise, state, value) {
       next.deferred
     );
   }
+  queue.length = 0;
 
   // Determine if this rejected promise will be "handled".
   if (state === RejectedPromise && promise._isChainEnd) {
@@ -317,6 +332,7 @@ function adopt(promise, state, value) {
     }, 0);
   }
 }
+
 /**
  * A partial application of adopt.
  *
@@ -328,6 +344,22 @@ function adopter(promise, state) {
   return function(value) {
     adopt(promise, state, value);
   };
+}
+
+/**
+ * Updates a deferred promises state. Necessary for updating an adopting
+ * promise's state when the adoptee resolves.
+ *
+ * @param {?Deferred} deferred
+ * @param {function(this:Promise,*=,function(*=),function(*=),Deferred):!Promise} state
+ * @param {*=} value
+ */
+function deferredAdopt(deferred, state, value) {
+  if (deferred) {
+    var promise = deferred.promise;
+    promise._state = state;
+    promise._value = value;
+  }
 }
 
 /**
@@ -388,9 +420,6 @@ function tryCatchDeferred(deferred, fn, arg) {
   return function() {
     try {
       var result = fn(arg);
-      if (resolve === fn || reject === fn) {
-        return;
-      }
       doResolve(promise, resolve, reject, result, result);
     } catch (e) {
       reject(e);
@@ -460,7 +489,7 @@ function doResolve(promise, resolve, reject, value, context) {
     }
     var isObj = isObject(value);
     if (isObj && value instanceof promise.constructor) {
-      adopt(promise, value._state, value._value);
+      adopt(promise, value._state, value._value, value);
     } else if (isObj && (then = value.then) && isFunction(then)) {
       _resolve = function(value) {
         _resolve = _reject = noop;

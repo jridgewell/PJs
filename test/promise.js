@@ -504,4 +504,39 @@ describe('PJs', function() {
             });
         });
     });
+
+    describe('adoption', function() {
+      it('inherits adopted state sync', function() {
+        var p0 = Promise.resolve(1);
+
+        var p1 = new Promise(function(resolve) {
+          resolve(p0);
+        });
+
+        var p2 = p0.then(function(value) {
+          expect(value).to.equal(1);
+        });
+        return p2;
+      });
+
+      it('inherits adopted state async', function() {
+        var p0 = new Promise(function(resolve) {
+          setTimeout(resolve, 20, 1);
+        });
+
+        var p1 = new Promise(function(resolve) {
+          resolve(p0);
+        });
+
+        var p2 = p0.then(function() {
+          return p1;
+        });
+
+        var p3 = p2.then(function(value) {
+          expect(value).to.equal(1);
+        });
+
+        return p3;
+      });
+    });
 });
