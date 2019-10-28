@@ -113,17 +113,48 @@ describe('PJs', function() {
         });
 
         describe('when a rejected promise is adopted', function() {
-            it('is called regardless of promise chain', function() {
+            it('is called when the end promise does not have a onRejected', function() {
                 var resolveP;
                 new Promise(function(resolve) {
                     resolveP = resolve;
                 }).then(function() {
                     return Promise.reject(1);
+                });
+
+                return new Promise(function(resolve) {
+                    Promise._overrideUnhandledExceptionHandler(resolve);
+                    resolveP();
+                });
+            });
+
+            it('is not called when the end promise already has a onRejected', function() {
+                var resolveP;
+                new Promise(function(resolve) {
+                    resolveP = resolve;
+                }).then(function() {
+                    return Promise.reject(1);
+                }).then(function() {
+                    return 2;
                 }).catch(function() {});
 
                 return new Promise(function(resolve, reject) {
-                    Promise._overrideUnhandledExceptionHandler(resolve);
+                    Promise._overrideUnhandledExceptionHandler(reject);
+                    setTimeout(resolve, 100);
                     resolveP();
+                });
+            });
+
+            it('is not called when the end promise gets a onRejected', function() {
+                var p = Promise.resolve(1).then(function() {
+                    return Promise.reject(1);
+                }).then(function() {
+                    return 2;
+                });
+
+                return new Promise(function(resolve, reject) {
+                    Promise._overrideUnhandledExceptionHandler(reject);
+                    setTimeout(resolve, 100);
+                    p.catch(function() {});
                 });
             });
         });

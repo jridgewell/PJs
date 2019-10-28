@@ -189,7 +189,7 @@ Promise._overrideUnhandledExceptionHandler = function(handler) {
  * The Fulfilled Promise state. Calls onFulfilled with the resolved value of
  * this promise, creating a new promise.
  *
- * If there is no onFulfilled, returns the current promise to avoid an promise
+ * If there is no onFulfilled, returns the current promise to avoid a promise
  * instance.
  *
  * @this {!Promise} The current promise
@@ -219,7 +219,7 @@ function FulfilledPromise(value, onFulfilled, unused, deferred) {
  * The Rejected Promise state. Calls onRejected with the resolved value of
  * this promise, creating a new promise.
  *
- * If there is no onRejected, returns the current promise to avoid an promise
+ * If there is no onRejected, returns the current promise to avoid a promise
  * instance.
  *
  * @this {!Promise} The current promise
@@ -250,7 +250,7 @@ function RejectedPromise(reason, unused, onRejected, deferred) {
  * resolved, or onRejected once the promise rejects.
  *
  * If there is no onFulfilled and no onRejected, returns the current promise to
- * avoid an promise instance.
+ * avoid a promise instance.
  *
  * @this {!Promise} The current promise
  * @param {*=} queue The current promise's pending promises queue.
@@ -326,6 +326,12 @@ function adopt(promise, state, value, adoptee) {
     );
   }
   queue.length = 0;
+
+  // If we're adopting another promise, it's not the end of the promise chain,
+  // the new promise is.
+  if (adoptee) {
+    adoptee._isChainEnd = false;
+  }
 
   // Determine if this rejected promise will be "handled".
   if (state === RejectedPromise && promise._isChainEnd) {
